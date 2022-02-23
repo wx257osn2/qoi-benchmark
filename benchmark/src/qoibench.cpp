@@ -53,6 +53,8 @@ struct options{
   bool decode = true;
   bool recurse = true;
   bool only_totals = false;
+  bool run_qoixx = true;
+  bool run_qoi_rust = true;
   unsigned runs;
   bool parse_option(std::string_view argv){
     if(argv == "--nowarmup")
@@ -67,6 +69,10 @@ struct options{
       this->recurse = false;
     else if(argv == "--onlytotals")
       this->only_totals = true;
+    else if(argv == "--noqoixx")
+      this->run_qoixx = false;
+    else if(argv == "--noqoi-rust")
+      this->run_qoi_rust = false;
     else
       return false;
     return true;
@@ -129,8 +135,10 @@ struct benchmark_result_t{
       const auto& res = *printer.result;
       os << std::string(max_name_length+1, ' ') << "decode ms   encode ms   decode mpps   encode mpps   decode rate   encode rate\n";
       output_lib(os, "qoi", res, res.qoi);
-      output_lib(os, "qoixx", res, res.qoixx);
-      output_lib(os, "qoi_rust", res, res.qoi_rust);
+      if(printer.opt->run_qoixx)
+        output_lib(os, "qoixx", res, res.qoixx);
+      if(printer.opt->run_qoi_rust)
+        output_lib(os, "qoi_rust", res, res.qoi_rust);
       return os;
     }
   };
@@ -209,21 +217,27 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
     throw std::runtime_error("Error decoding " + p.string());
 
   if(opt.verify){
-    verify("qoixx", p, &::qoixx_encode, &qoixx_decode, &qoixx_free, pixels.get(), desc, encoded_qoi.get(), out_len);
-    verify("qoi_rust", p, &::qoi_rust_encode, &qoi_rust_decode, &qoi_rust_free, pixels.get(), desc, encoded_qoi.get(), out_len);
+    if(opt.run_qoixx)
+      verify("qoixx", p, &::qoixx_encode, &qoixx_decode, &qoixx_free, pixels.get(), desc, encoded_qoi.get(), out_len);
+    if(opt.run_qoi_rust)
+      verify("qoi_rust", p, &::qoi_rust_encode, &qoi_rust_decode, &qoi_rust_free, pixels.get(), desc, encoded_qoi.get(), out_len);
   }
 
   benchmark_result_t result{desc};
   if(opt.decode){
     BENCHMARK_DECODE(opt, result.qoi.decode_time, ::qoi_decode, ::free);
-    BENCHMARK_DECODE(opt, result.qoixx.decode_time, ::qoixx_decode, ::qoixx_free);
-    BENCHMARK_DECODE(opt, result.qoi_rust.decode_time, ::qoi_rust_decode, ::qoi_rust_free);
+    if(opt.run_qoixx)
+      BENCHMARK_DECODE(opt, result.qoixx.decode_time, ::qoixx_decode, ::qoixx_free);
+    if(opt.run_qoi_rust)
+      BENCHMARK_DECODE(opt, result.qoi_rust.decode_time, ::qoi_rust_decode, ::qoi_rust_free);
   }
 
   if(opt.encode){
     BENCHMARK_ENCODE(opt, result.qoi.encode_time, ::qoi_encode, ::free);
-    BENCHMARK_ENCODE(opt, result.qoixx.encode_time, ::qoixx_encode, ::qoixx_free);
-    BENCHMARK_ENCODE(opt, result.qoi_rust.encode_time, ::qoi_rust_encode, ::qoi_rust_free);
+    if(opt.run_qoixx)
+      BENCHMARK_ENCODE(opt, result.qoixx.encode_time, ::qoixx_encode, ::qoixx_free);
+    if(opt.run_qoi_rust)
+      BENCHMARK_ENCODE(opt, result.qoi_rust.encode_time, ::qoi_rust_encode, ::qoi_rust_free);
   }
 
   return result;
