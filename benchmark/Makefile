@@ -1,0 +1,9 @@
+qoibench: bin/qoibench
+
+clean:
+	$(RM) -f bin/qoibench lib/*.a include/qoi.h
+
+.PHONY: qoibench clean
+
+bin/qoibench: src/qoibench.cpp lib/libqoi.a lib/libqoixx.a
+	$(CXX) -std=c++2a -Wall -Wextra -pedantic-errors -O3 -march=native -mtune=native -I .dependencies/stb -I include -o$@ $< -Llib -lqoi -lqoixx
