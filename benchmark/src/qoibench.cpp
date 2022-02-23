@@ -30,6 +30,7 @@
 #endif
 
 #include"qoixx.h"
+#include"qoi_rust.h"
 
 #include<chrono>
 #include<iostream>
@@ -88,14 +89,15 @@ struct benchmark_result_t{
   std::size_t px;
   std::uint32_t w, h;
   std::uint8_t c;
-  lib_t qoi, qoixx;
-  benchmark_result_t():count{0}, px{0}, qoi{0, {}, {}}, qoixx{0, {}, {}}{}
-  benchmark_result_t(const ::qoi_desc& dc):count{1}, px{static_cast<std::size_t>(dc.width)*dc.height}, w{dc.width}, h{dc.height}, c{dc.channels}, qoi{}, qoixx{}{}
+  lib_t qoi, qoixx, qoi_rust;
+  benchmark_result_t():count{0}, px{0}, qoi{}, qoixx{}, qoi_rust{}{}
+  benchmark_result_t(const ::qoi_desc& dc):count{1}, px{static_cast<std::size_t>(dc.width)*dc.height}, w{dc.width}, h{dc.height}, c{dc.channels}, qoi{}, qoixx{}, qoi_rust{}{}
   benchmark_result_t& operator+=(const benchmark_result_t& rhs)noexcept{
     this->count += rhs.count;
     this->px += rhs.px;
     this->qoi += rhs.qoi;
     this->qoixx += rhs.qoixx;
+    this->qoi_rust += rhs.qoi_rust;
     return *this;
   }
   struct printer{
@@ -128,6 +130,7 @@ struct benchmark_result_t{
       os << std::string(max_name_length+1, ' ') << "decode ms   encode ms   decode mpps   encode mpps   decode rate   encode rate\n";
       output_lib(os, "qoi", res, res.qoi);
       output_lib(os, "qoixx", res, res.qoixx);
+      output_lib(os, "qoi_rust", res, res.qoi_rust);
       return os;
     }
   };
@@ -207,17 +210,20 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
 
   if(opt.verify){
     verify("qoixx", p, &::qoixx_encode, &qoixx_decode, &qoixx_free, pixels.get(), desc, encoded_qoi.get(), out_len);
+    verify("qoi_rust", p, &::qoi_rust_encode, &qoi_rust_decode, &qoi_rust_free, pixels.get(), desc, encoded_qoi.get(), out_len);
   }
 
   benchmark_result_t result{desc};
   if(opt.decode){
     BENCHMARK_DECODE(opt, result.qoi.decode_time, ::qoi_decode, ::free);
     BENCHMARK_DECODE(opt, result.qoixx.decode_time, ::qoixx_decode, ::qoixx_free);
+    BENCHMARK_DECODE(opt, result.qoi_rust.decode_time, ::qoi_rust_decode, ::qoi_rust_free);
   }
 
   if(opt.encode){
     BENCHMARK_ENCODE(opt, result.qoi.encode_time, ::qoi_encode, ::free);
     BENCHMARK_ENCODE(opt, result.qoixx.encode_time, ::qoixx_encode, ::qoixx_free);
+    BENCHMARK_ENCODE(opt, result.qoi_rust.encode_time, ::qoi_rust_encode, ::qoi_rust_free);
   }
 
   return result;
