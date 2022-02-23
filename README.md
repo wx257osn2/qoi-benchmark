@@ -5,7 +5,7 @@ Cross-language benchmark for [QOI](https://github.com/phoboslab/qoi) implementat
 ## Implementations
 
 - [`qoi`](https://github.com/phoboslab/qoi)
-- [`qoixx`](https://github.com/phoboslab/qoixx)
+- [`qoixx`](https://github.com/wx257osn2/qoixx)
 - [`qoi-rust`](https://github.com/aldanor/qoi-rust)
 
 ## Usage
