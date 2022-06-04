@@ -53,6 +53,7 @@ struct options{
   bool decode = true;
   bool recurse = true;
   bool only_totals = false;
+  bool allow_broken_implementation = false;
   bool run_qoixx = true;
   bool run_qoi_rust = true;
   unsigned runs;
@@ -69,6 +70,8 @@ struct options{
       this->recurse = false;
     else if(argv == "--onlytotals")
       this->only_totals = true;
+    else if(argv == "--nohalt")
+      this->allow_broken_implementation = true;
     else if(argv == "--noqoixx")
       this->run_qoixx = false;
     else if(argv == "--noqoi-rust")
@@ -84,10 +87,12 @@ struct benchmark_result_t{
     std::size_t size;
     std::chrono::duration<double, std::nano> encode_time;
     std::chrono::duration<double, std::nano> decode_time;
+    bool valid = true;
     lib_t& operator+=(const lib_t& rhs)noexcept{
       size += rhs.size;
       encode_time += rhs.encode_time;
       decode_time += rhs.decode_time;
+      valid = valid && rhs.valid;
       return *this;
     }
   };
@@ -121,6 +126,8 @@ struct benchmark_result_t{
     };
     static constexpr std::size_t max_name_length = 9;
     static std::ostream& output_lib(std::ostream& os, std::string_view name, const benchmark_result_t& res, const lib_t& lib){
+      if(!lib.valid)
+        return os << name << " outputs invalid content\n";
       const auto px = static_cast<double>(res.px) / res.count;
       const auto etime = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(lib.encode_time) / res.count;
       const auto dtime = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(lib.decode_time) / res.count;
@@ -151,7 +158,7 @@ static inline bool compare(const ::qoi_desc& lhs, const ::qoi_desc& rhs){
   return lhs.width == rhs.width && lhs.height == rhs.height && lhs.channels == rhs.channels && lhs.colorspace == rhs.colorspace;
 }
 
-static inline void verify(const char* name, const std::filesystem::path& p, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*), const std::uint8_t* pixels, const qoi_desc& desc, const std::uint8_t* encoded, int encoded_size){
+static inline void verify(const char* name, const std::filesystem::path& p, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*), const std::uint8_t* pixels, const qoi_desc& desc, const std::uint8_t* encoded, int encoded_size, bool shelve)try{
   {// qoi.encode -> decoder == pixels
     qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(encoded, encoded_size, &dc, desc.channels)), free};
@@ -174,6 +181,11 @@ static inline void verify(const char* name, const std::filesystem::path& p, void
     if(!compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
       throw std::runtime_error(std::string{name} + " roundtrip pixel mismatch for " + p.string());
   }
+}catch(std::exception& e){
+  if(shelve)
+    std::cout << e.what() << std::endl;
+  else
+    throw;
 }
 
 #define BENCHMARK(opt, result, preamble, ...) \
@@ -218,9 +230,9 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
 
   if(opt.verify){
     if(opt.run_qoixx)
-      verify("qoixx", p, &::qoixx_encode, &qoixx_decode, &qoixx_free, pixels.get(), desc, encoded_qoi.get(), out_len);
+      verify("qoixx", p, &::qoixx_encode, &qoixx_decode, &qoixx_free, pixels.get(), desc, encoded_qoi.get(), out_len, opt.allow_broken_implementation);
     if(opt.run_qoi_rust)
-      verify("qoi_rust", p, &::qoi_rust_encode, &qoi_rust_decode, &qoi_rust_free, pixels.get(), desc, encoded_qoi.get(), out_len);
+      verify("qoi_rust", p, &::qoi_rust_encode, &qoi_rust_decode, &qoi_rust_free, pixels.get(), desc, encoded_qoi.get(), out_len, opt.allow_broken_implementation);
   }
 
   benchmark_result_t result{desc};
