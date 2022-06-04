@@ -100,9 +100,9 @@ struct benchmark_result_t{
   std::size_t px;
   std::uint32_t w, h;
   std::uint8_t c;
-  lib_t qoi, qoixx, qoi_rust;
-  benchmark_result_t():count{0}, px{0}, qoi{}, qoixx{}, qoi_rust{}{}
-  benchmark_result_t(const ::qoi_desc& dc):count{1}, px{static_cast<std::size_t>(dc.width)*dc.height}, w{dc.width}, h{dc.height}, c{dc.channels}, qoi{}, qoixx{}, qoi_rust{}{}
+  lib_t qoi = {}, qoixx = {}, qoi_rust = {};
+  benchmark_result_t():count{0}, px{0}{}
+  benchmark_result_t(const ::qoi_desc& dc):count{1}, px{static_cast<std::size_t>(dc.width)*dc.height}, w{dc.width}, h{dc.height}, c{dc.channels}{}
   benchmark_result_t& operator+=(const benchmark_result_t& rhs)noexcept{
     this->count += rhs.count;
     this->px += rhs.px;
