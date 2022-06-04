@@ -33,6 +33,9 @@
 #include"qoi_rust.h"
 #include"rapid-qoi.h"
 
+#include"implementation_macro.hpp"
+#include"implementations.hpp"
+
 #include<chrono>
 #include<iostream>
 #include<filesystem>
@@ -55,9 +58,7 @@ struct options{
   bool recurse = true;
   bool only_totals = false;
   bool allow_broken_implementation = false;
-  bool run_qoixx = true;
-  bool run_qoi_rust = true;
-  bool run_rapid_qoi = true;
+  OPTIONS_DECLARATION(IMPLEMENTATIONS)
   unsigned runs;
   bool parse_option(std::string_view argv){
     if(argv == "--nowarmup")
@@ -74,23 +75,19 @@ struct options{
       this->only_totals = true;
     else if(argv == "--nohalt")
       this->allow_broken_implementation = true;
-    else if(argv == "--noqoixx")
-      this->run_qoixx = false;
-    else if(argv == "--noqoi-rust")
-      this->run_qoi_rust = false;
-    else if(argv == "--norapid-qoi")
-      this->run_rapid_qoi = false;
+    OPTIONS_IMPLEMENTATION(IMPLEMENTATIONS)
     else
       return false;
     return true;
   }
 };
 
+using nanosec = std::chrono::duration<double, std::nano>;
 struct benchmark_result_t{
   struct lib_t{
     std::size_t size;
-    std::chrono::duration<double, std::nano> encode_time;
-    std::chrono::duration<double, std::nano> decode_time;
+    nanosec encode_time;
+    nanosec decode_time;
     bool valid = true;
     lib_t& operator+=(const lib_t& rhs)noexcept{
       size += rhs.size;
@@ -104,16 +101,15 @@ struct benchmark_result_t{
   std::size_t px;
   std::uint32_t w, h;
   std::uint8_t c;
-  lib_t qoi = {}, qoixx = {}, qoi_rust = {}, rapid_qoi = {};
+  lib_t qoi = {};
+  LIB_DECLARATION(IMPLEMENTATIONS)
   benchmark_result_t():count{0}, px{0}{}
   benchmark_result_t(const ::qoi_desc& dc):count{1}, px{static_cast<std::size_t>(dc.width)*dc.height}, w{dc.width}, h{dc.height}, c{dc.channels}{}
   benchmark_result_t& operator+=(const benchmark_result_t& rhs)noexcept{
     this->count += rhs.count;
     this->px += rhs.px;
     this->qoi += rhs.qoi;
-    this->qoixx += rhs.qoixx;
-    this->qoi_rust += rhs.qoi_rust;
-    this->rapid_qoi += rhs.rapid_qoi;
+    OPERATOR_PLUS_EQUAL_IMPLEMENTATION(IMPLEMENTATIONS)
     return *this;
   }
   struct printer{
@@ -147,12 +143,7 @@ struct benchmark_result_t{
       const auto& res = *printer.result;
       os << std::string(max_name_length+1, ' ') << "decode ms   encode ms   decode mpps   encode mpps   decode rate   encode rate\n";
       output_lib(os, "qoi", res, res.qoi);
-      if(printer.opt->run_qoixx)
-        output_lib(os, "qoixx", res, res.qoixx);
-      if(printer.opt->run_qoi_rust)
-        output_lib(os, "qoi-rust", res, res.qoi_rust);
-      if(printer.opt->run_rapid_qoi)
-        output_lib(os, "rapid-qoi", res, res.rapid_qoi);
+      OUTPUT_IMPLEMENTATION(IMPLEMENTATIONS)
       return os;
     }
   };
@@ -195,6 +186,8 @@ static inline void verify(const char* name, const std::filesystem::path& p, void
     throw;
 }
 
+template<typename Deleter>
+using unique_ptr_for_benchmark = std::unique_ptr<std::uint8_t[], Deleter>;
 #define BENCHMARK(opt, result, preamble, ...) \
 do{ \
   std::chrono::nanoseconds time = {}; \
@@ -206,11 +199,11 @@ do{ \
     if(i > 0) \
       time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start); \
   } \
-  result = std::chrono::duration_cast<std::chrono::duration<double, std::nano>>(time)/opt.runs; \
+  result = std::chrono::duration_cast<nanosec>(time)/opt.runs; \
 }while(0)
 
-#define BENCHMARK_DECODE(opt, result, f, d) BENCHMARK(opt, result, ::qoi_desc dc;, const std::unique_ptr<std::uint8_t[], decltype(&d)> pixs{static_cast<std::uint8_t*>(f(encoded_qoi.get(), out_len, &dc, channels)), &d};)
-#define BENCHMARK_ENCODE(opt, result, f, d) BENCHMARK(opt, result, int size;, const std::unique_ptr<std::uint8_t[], decltype(&d)> pixs{static_cast<std::uint8_t*>(f(pixels.get(), &desc, &size)), &d};)
+#define BENCHMARK_DECODE(opt, result, f, d) BENCHMARK(opt, result, ::qoi_desc dc;, const unique_ptr_for_benchmark<decltype(&d)> pixs(static_cast<std::uint8_t*>(f(encoded_qoi.get(), out_len, &dc, channels)), &d);)
+#define BENCHMARK_ENCODE(opt, result, f, d) BENCHMARK(opt, result, int size;, const unique_ptr_for_benchmark<decltype(&d)> pixs(static_cast<std::uint8_t*>(f(pixels.get(), &desc, &size)), &d);)
 
 static inline benchmark_result_t benchmark_image(const std::filesystem::path& p, const options& opt){
   int w, h, channels;
@@ -240,33 +233,18 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
   };
 
   if(opt.verify){
-    if(opt.run_qoixx)
-      verify("qoixx", &::qoixx_encode, &::qoixx_decode, &::qoixx_free);
-    if(opt.run_qoi_rust)
-      verify("qoi-rust", &::qoi_rust_encode, &::qoi_rust_decode, &::qoi_rust_free);
-    if(opt.run_rapid_qoi)
-      verify("rapid-qoi", &::rapid_qoi_encode, &::rapid_qoi_decode, &::rapid_qoi_free);
+    VERIFY_CALL(IMPLEMENTATIONS)
   }
 
   benchmark_result_t result{desc};
   if(opt.decode){
     BENCHMARK_DECODE(opt, result.qoi.decode_time, ::qoi_decode, ::free);
-    if(opt.run_qoixx)
-      BENCHMARK_DECODE(opt, result.qoixx.decode_time, ::qoixx_decode, ::qoixx_free);
-    if(opt.run_qoi_rust)
-      BENCHMARK_DECODE(opt, result.qoi_rust.decode_time, ::qoi_rust_decode, ::qoi_rust_free);
-    if(opt.run_rapid_qoi)
-      BENCHMARK_DECODE(opt, result.rapid_qoi.decode_time, ::rapid_qoi_decode, ::rapid_qoi_free);
+    BENCHMARK_DECODE_CALL(IMPLEMENTATIONS)
   }
 
   if(opt.encode){
     BENCHMARK_ENCODE(opt, result.qoi.encode_time, ::qoi_encode, ::free);
-    if(opt.run_qoixx)
-      BENCHMARK_ENCODE(opt, result.qoixx.encode_time, ::qoixx_encode, ::qoixx_free);
-    if(opt.run_qoi_rust)
-      BENCHMARK_ENCODE(opt, result.qoi_rust.encode_time, ::qoi_rust_encode, ::qoi_rust_free);
-    if(opt.run_rapid_qoi)
-      BENCHMARK_ENCODE(opt, result.rapid_qoi.encode_time, ::rapid_qoi_encode, ::rapid_qoi_free);
+    BENCHMARK_ENCODE_CALL(IMPLEMENTATIONS)
   }
 
   return result;
@@ -316,9 +294,7 @@ static inline int help(const char* argv_0, std::ostream& os = std::cout){
         "    --norecurse ... don't descend into directories\n"
         "    --onlytotals .. don't print individual image results\n"
         "    --nohalt ...... don't stop if some implementation fail validation\n"
-        "    --noqoixx ..... don't execute qoixx\n"
-        "    --noqoi-rust .. don't execute qoi-rust\n"
-        "    --norapid-qoi . don't execute rapid-qoi\n"
+        HELP(IMPLEMENTATIONS)
         "Examples\n"
         "    ./" << argv_0 << " 10 images/textures/\n"
         "    ./" << argv_0 << " 1 images/textures/ --nowarmup" << std::endl;

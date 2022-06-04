@@ -26,7 +26,7 @@ More concretely, you should implement below functions:
 void* your_own_qoi_encode(const void* data, const qoi_desc* desc, int* out_len);
 void* your_own_qoi_decode(const void* data, int size, qoi_desc* desc, int channels); // it's OK that the last argument doesn't work. In this project channels is same as desc.channels.
 
-void your_own_qoi_free(void* ptr); //optional. if you allocate your memory in an unusual way, you can provide appropriate deallocation method.
+void your_own_qoi_free(void* ptr); // provide appropriate deallocation method corresponding to allocation method you used in encode/decode
 ```
 
 Then, create static library (`libyour_own_qoi.a`) with your implementations.
