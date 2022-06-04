@@ -1,4 +1,4 @@
-use rapid_qoi::{Colors};
+use rapid_qoi::Colors;
 
 #[repr(C)]
 pub struct qoi_desc {
@@ -19,10 +19,7 @@ pub unsafe extern "C" fn rapid_qoi_decode(
     desc: *mut qoi_desc,
     _: libc::c_int,
 ) -> *mut libc::c_void {
-    if data.is_null()
-        || desc.is_null()
-        || (size as usize) < QOI_HEADER_SIZE + QOI_PADDING_SIZE
-    {
+    if data.is_null() || desc.is_null() || (size as usize) < QOI_HEADER_SIZE + QOI_PADDING_SIZE {
         return std::ptr::null_mut();
     }
     let input = std::slice::from_raw_parts(data as *const u8, size as usize);
@@ -34,9 +31,15 @@ pub unsafe extern "C" fn rapid_qoi_decode(
     (*desc).width = header.width;
     (*desc).height = header.height;
     (*desc).channels = header.colors.channels() as u8;
-    (*desc).colorspace = match header.colors{Colors::Srgb|Colors::SrgbLinA => 0u8, _ => 1u8};
+    (*desc).colorspace = match header.colors {
+        Colors::Srgb | Colors::SrgbLinA => 0u8,
+        _ => 1u8,
+    };
     let ptr = libc::malloc(header.decoded_size()) as *mut u8;
-    let decode_ = header.decode_skip_header(&input[QOI_HEADER_SIZE..], std::slice::from_raw_parts_mut(ptr, header.decoded_size()));
+    let decode_ = header.decode_skip_header(
+        &input[QOI_HEADER_SIZE..],
+        std::slice::from_raw_parts_mut(ptr, header.decoded_size()),
+    );
     if decode_.is_err() {
         return std::ptr::null_mut();
     }
@@ -69,20 +72,17 @@ pub unsafe extern "C" fn rapid_qoi_encode(
     let encoder = rapid_qoi::Qoi {
         width: (*desc).width,
         height: (*desc).height,
-        colors: match ((*desc).channels, (*desc).colorspace){
+        colors: match ((*desc).channels, (*desc).colorspace) {
             (3, 0) => rapid_qoi::Colors::Srgb,
             (4, 0) => rapid_qoi::Colors::SrgbLinA,
             (3, 1) => rapid_qoi::Colors::Rgb,
             (4, 1) => rapid_qoi::Colors::Rgba,
-            _ => return std::ptr::null_mut()
-        }
+            _ => return std::ptr::null_mut(),
+        },
     };
     let size = encoder.encoded_size_limit();
     let ptr = libc::malloc(size) as *mut u8;
-    let actual_size = encoder.encode(
-        input,
-        std::slice::from_raw_parts_mut(ptr, size),
-    );
+    let actual_size = encoder.encode(input, std::slice::from_raw_parts_mut(ptr, size));
     if actual_size.is_err() {
         return std::ptr::null_mut();
     }
