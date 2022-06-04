@@ -228,11 +228,15 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
   if(!pixels)
     throw std::runtime_error("Error decoding " + p.string());
 
+  const auto verify = [&](const char* name, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*)){
+    ::verify(name, p, encoder, decoder, free, pixels.get(), desc, encoded_qoi.get(), out_len, opt.allow_broken_implementation);
+  };
+
   if(opt.verify){
     if(opt.run_qoixx)
-      verify("qoixx", p, &::qoixx_encode, &qoixx_decode, &qoixx_free, pixels.get(), desc, encoded_qoi.get(), out_len, opt.allow_broken_implementation);
+      verify("qoixx", &::qoixx_encode, &::qoixx_decode, &::qoixx_free);
     if(opt.run_qoi_rust)
-      verify("qoi_rust", p, &::qoi_rust_encode, &qoi_rust_decode, &qoi_rust_free, pixels.get(), desc, encoded_qoi.get(), out_len, opt.allow_broken_implementation);
+      verify("qoi_rust", &::qoi_rust_encode, &::qoi_rust_decode, &::qoi_rust_free);
   }
 
   benchmark_result_t result{desc};
