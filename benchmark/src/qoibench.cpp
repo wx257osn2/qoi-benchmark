@@ -150,7 +150,7 @@ struct benchmark_result_t{
       if(printer.opt->run_qoixx)
         output_lib(os, "qoixx", res, res.qoixx);
       if(printer.opt->run_qoi_rust)
-        output_lib(os, "qoi_rust", res, res.qoi_rust);
+        output_lib(os, "qoi-rust", res, res.qoi_rust);
       if(printer.opt->run_rapid_qoi)
         output_lib(os, "rapid-qoi", res, res.rapid_qoi);
       return os;
@@ -243,7 +243,7 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
     if(opt.run_qoixx)
       verify("qoixx", &::qoixx_encode, &::qoixx_decode, &::qoixx_free);
     if(opt.run_qoi_rust)
-      verify("qoi_rust", &::qoi_rust_encode, &::qoi_rust_decode, &::qoi_rust_free);
+      verify("qoi-rust", &::qoi_rust_encode, &::qoi_rust_decode, &::qoi_rust_free);
     if(opt.run_rapid_qoi)
       verify("rapid-qoi", &::rapid_qoi_encode, &::rapid_qoi_decode, &::rapid_qoi_free);
   }
