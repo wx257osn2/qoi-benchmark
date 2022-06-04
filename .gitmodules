@@ -7,3 +7,6 @@
 [submodule "benchmark/.dependencies/stb"]
 	path = benchmark/.dependencies/stb
 	url = https://github.com/nothings/stb
+[submodule "rapid-qoi/rapid-qoi"]
+	path = rapid-qoi/rapid-qoi
+	url = https://github.com/zakarumych/rapid-qoi

@@ -31,6 +31,7 @@
 
 #include"qoixx.h"
 #include"qoi_rust.h"
+#include"rapid-qoi.h"
 
 #include<chrono>
 #include<iostream>
@@ -56,6 +57,7 @@ struct options{
   bool allow_broken_implementation = false;
   bool run_qoixx = true;
   bool run_qoi_rust = true;
+  bool run_rapid_qoi = true;
   unsigned runs;
   bool parse_option(std::string_view argv){
     if(argv == "--nowarmup")
@@ -76,6 +78,8 @@ struct options{
       this->run_qoixx = false;
     else if(argv == "--noqoi-rust")
       this->run_qoi_rust = false;
+    else if(argv == "--norapid-qoi")
+      this->run_rapid_qoi = false;
     else
       return false;
     return true;
@@ -100,7 +104,7 @@ struct benchmark_result_t{
   std::size_t px;
   std::uint32_t w, h;
   std::uint8_t c;
-  lib_t qoi = {}, qoixx = {}, qoi_rust = {};
+  lib_t qoi = {}, qoixx = {}, qoi_rust = {}, rapid_qoi = {};
   benchmark_result_t():count{0}, px{0}{}
   benchmark_result_t(const ::qoi_desc& dc):count{1}, px{static_cast<std::size_t>(dc.width)*dc.height}, w{dc.width}, h{dc.height}, c{dc.channels}{}
   benchmark_result_t& operator+=(const benchmark_result_t& rhs)noexcept{
@@ -109,6 +113,7 @@ struct benchmark_result_t{
     this->qoi += rhs.qoi;
     this->qoixx += rhs.qoixx;
     this->qoi_rust += rhs.qoi_rust;
+    this->rapid_qoi += rhs.rapid_qoi;
     return *this;
   }
   struct printer{
@@ -146,6 +151,8 @@ struct benchmark_result_t{
         output_lib(os, "qoixx", res, res.qoixx);
       if(printer.opt->run_qoi_rust)
         output_lib(os, "qoi_rust", res, res.qoi_rust);
+      if(printer.opt->run_rapid_qoi)
+        output_lib(os, "rapid-qoi", res, res.rapid_qoi);
       return os;
     }
   };
@@ -237,6 +244,8 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
       verify("qoixx", &::qoixx_encode, &::qoixx_decode, &::qoixx_free);
     if(opt.run_qoi_rust)
       verify("qoi_rust", &::qoi_rust_encode, &::qoi_rust_decode, &::qoi_rust_free);
+    if(opt.run_rapid_qoi)
+      verify("rapid-qoi", &::rapid_qoi_encode, &::rapid_qoi_decode, &::rapid_qoi_free);
   }
 
   benchmark_result_t result{desc};
@@ -246,6 +255,8 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
       BENCHMARK_DECODE(opt, result.qoixx.decode_time, ::qoixx_decode, ::qoixx_free);
     if(opt.run_qoi_rust)
       BENCHMARK_DECODE(opt, result.qoi_rust.decode_time, ::qoi_rust_decode, ::qoi_rust_free);
+    if(opt.run_rapid_qoi)
+      BENCHMARK_DECODE(opt, result.rapid_qoi.decode_time, ::rapid_qoi_decode, ::rapid_qoi_free);
   }
 
   if(opt.encode){
@@ -254,6 +265,8 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
       BENCHMARK_ENCODE(opt, result.qoixx.encode_time, ::qoixx_encode, ::qoixx_free);
     if(opt.run_qoi_rust)
       BENCHMARK_ENCODE(opt, result.qoi_rust.encode_time, ::qoi_rust_encode, ::qoi_rust_free);
+    if(opt.run_rapid_qoi)
+      BENCHMARK_ENCODE(opt, result.rapid_qoi.encode_time, ::rapid_qoi_encode, ::rapid_qoi_free);
   }
 
   return result;
@@ -296,15 +309,16 @@ static inline benchmark_result_t benchmark_directory(const std::filesystem::path
 static inline int help(const char* argv_0, std::ostream& os = std::cout){
   os << "Usage: " << argv_0 << " <iterations> <directory> [options...]\n"
         "Options:\n"
-        "    --nowarmup ... don't perform a warmup run\n"
-        "    --noverify ... don't verify qoi roundtrip\n"
-        "    --noencode ... don't run encoders\n"
-        "    --nodecode ... don't run decoders\n"
-        "    --norecurse .. don't descend into directories\n"
-        "    --onlytotals . don't print individual image results\n"
-        "    --nohalt ..... don't stop if some implementation fail validation\n"
-        "    --noqoixx .... don't execute qoixx\n"
-        "    --noqoi-rust . don't execute qoi-rust\n"
+        "    --nowarmup .... don't perform a warmup run\n"
+        "    --noverify .... don't verify qoi roundtrip\n"
+        "    --noencode .... don't run encoders\n"
+        "    --nodecode .... don't run decoders\n"
+        "    --norecurse ... don't descend into directories\n"
+        "    --onlytotals .. don't print individual image results\n"
+        "    --nohalt ...... don't stop if some implementation fail validation\n"
+        "    --noqoixx ..... don't execute qoixx\n"
+        "    --noqoi-rust .. don't execute qoi-rust\n"
+        "    --norapid-qoi . don't execute rapid-qoi\n"
         "Examples\n"
         "    ./" << argv_0 << " 10 images/textures/\n"
         "    ./" << argv_0 << " 1 images/textures/ --nowarmup" << std::endl;
