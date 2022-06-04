@@ -302,6 +302,9 @@ static inline int help(const char* argv_0, std::ostream& os = std::cout){
         "    --nodecode ... don't run decoders\n"
         "    --norecurse .. don't descend into directories\n"
         "    --onlytotals . don't print individual image results\n"
+        "    --nohalt ..... don't stop if some implementation fail validation\n"
+        "    --noqoixx .... don't execute qoixx\n"
+        "    --noqoi-rust . don't execute qoi-rust\n"
         "Examples\n"
         "    ./" << argv_0 << " 10 images/textures/\n"
         "    ./" << argv_0 << " 1 images/textures/ --nowarmup" << std::endl;
