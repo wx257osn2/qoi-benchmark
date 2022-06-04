@@ -172,7 +172,7 @@ static inline void verify(const char* name, const std::filesystem::path& p, void
     ::qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(enc.get(), size, &dc, desc.channels)), free};
     if(!compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
-      throw std::runtime_error("QOIxx roundtrip pixel mismatch for " + p.string());
+      throw std::runtime_error(std::string{name} + " roundtrip pixel mismatch for " + p.string());
   }
 }
 
