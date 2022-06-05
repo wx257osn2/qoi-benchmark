@@ -11,10 +11,24 @@ Cross-language benchmark for [QOI](https://github.com/phoboslab/qoi) implementat
 
 ## Usage
 
-```console
-$ make
-$ benchmark/bin/benchmark 20 /path/to/image/directory
-```
+- Use Docker
+    - ```console
+      host$ curl https://qoiformat.org/benchmark/qoi_benchmark_suite.tar | tar x
+      host$ ./docker/build.bash
+      host$ ./docker/bash
+      docker$ make
+      docker$ benchmark/bin/qoibench 20 images
+      ```
+- On Host
+    - Prerequisites:
+        - `gcc` for `qoi`
+        - `g++` supporting `-std=c++2a` for `qoixx`
+        - `cargo` and Rust toolchains for `qoi-rust` and `rapid-qoi`
+        - `make`
+    - ```console
+      $ make
+      $ benchmark/bin/qoibench 20 /path/to/image/directory
+      ```
 
 ## How to add my implementation?
 

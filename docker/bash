@@ -1,0 +1,12 @@
+#!/bin/bash
+
+here="$(realpath $(dirname ${BASH_SOURCE:-$0}))"
+
+docker run --rm -it --net="host" \
+  -v ${here}/../:${here}/../ \
+  -v /etc/group:/etc/group:ro \
+  -v /etc/passwd:/etc/passwd:ro \
+  -u $(id -u ${USER}):$(id -g ${USER}) \
+  -w $PWD \
+  qoi-benchmark:latest \
+  bash --login
