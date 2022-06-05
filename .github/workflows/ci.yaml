@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  ci:
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: recursive
+    - uses: ./.github/actions/cache_cargo
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+    - uses: actions/cache@v2
+      with:
+        path: images
+        key: key
+    - id: cached
+      uses: andstor/file-existence-action@v1
+      with:
+        files: images
+    - name: get benchmark suite
+      if: steps.cached.outputs.files_exists == 'false'
+      shell: bash
+      run: curl https://qoiformat.org/benchmark/qoi_benchmark_suite.tar | tar x
+    - name: build
+      shell: bash
+      run: make -j
+    - name: run
+      shell: bash
+      run: benchmark/bin/qoibench 10 images
