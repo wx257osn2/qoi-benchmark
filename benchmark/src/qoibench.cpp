@@ -156,7 +156,7 @@ static inline bool compare(const ::qoi_desc& lhs, const ::qoi_desc& rhs){
   return lhs.width == rhs.width && lhs.height == rhs.height && lhs.channels == rhs.channels && lhs.colorspace == rhs.colorspace;
 }
 
-static inline void verify(const char* name, const std::filesystem::path& p, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*), const std::uint8_t* pixels, const qoi_desc& desc, const std::uint8_t* encoded, int encoded_size, bool shelve)try{
+static inline bool verify(const char* name, const std::filesystem::path& p, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*), const std::uint8_t* pixels, const qoi_desc& desc, const std::uint8_t* encoded, int encoded_size, bool shelve)try{
   {// qoi.encode -> decoder == pixels
     qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(encoded, encoded_size, &dc, desc.channels)), free};
@@ -179,9 +179,12 @@ static inline void verify(const char* name, const std::filesystem::path& p, void
     if(!compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
       throw std::runtime_error(std::string{name} + " roundtrip pixel mismatch for " + p.string());
   }
+  return true;
 }catch(std::exception& e){
-  if(shelve)
+  if(shelve){
     std::cout << e.what() << std::endl;
+    return false;
+  }
   else
     throw;
 }
@@ -229,14 +232,14 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
     throw std::runtime_error("Error decoding " + p.string());
 
   const auto verify = [&](const char* name, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*)){
-    ::verify(name, p, encoder, decoder, free, pixels.get(), desc, encoded_qoi.get(), out_len, opt.allow_broken_implementation);
+    return ::verify(name, p, encoder, decoder, free, pixels.get(), desc, encoded_qoi.get(), out_len, opt.allow_broken_implementation);
   };
 
+  benchmark_result_t result{desc};
   if(opt.verify){
     VERIFY_CALL(IMPLEMENTATIONS)
   }
 
-  benchmark_result_t result{desc};
   if(opt.decode){
     BENCHMARK_DECODE(opt, result.qoi.decode_time, ::qoi_decode, ::free);
     BENCHMARK_DECODE_CALL(IMPLEMENTATIONS)
