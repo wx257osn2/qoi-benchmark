@@ -50,6 +50,8 @@
 #include<iomanip>
 #include<cstring>
 
+namespace qoi_benchmark{
+
 struct options{
   bool warmup = true;
   bool verify = true;
@@ -232,7 +234,7 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
     throw std::runtime_error("Error decoding " + p.string());
 
   const auto verify = [&](const char* name, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*)){
-    return ::verify(name, p, encoder, decoder, free, pixels.get(), desc, encoded_qoi.get(), out_len, opt.allow_broken_implementation);
+    return qoi_benchmark::verify(name, p, encoder, decoder, free, pixels.get(), desc, encoded_qoi.get(), out_len, opt.allow_broken_implementation);
   };
 
   benchmark_result_t result{desc};
@@ -304,14 +306,16 @@ static inline int help(const char* argv_0, std::ostream& os = std::cout){
   return EXIT_FAILURE;
 }
 
+}
+
 int main(int argc, char** argv)try{
   if(argc < 3)
-    return help(argv[0]);
-  options opt = {};
+    return qoi_benchmark::help(argv[0]);
+  qoi_benchmark::options opt = {};
   for(int i = 3; i < argc; ++i)
     if(!opt.parse_option(argv[i])){
       std::cout << "Unknown option " << argv[i] << '\n';
-      return help(argv[0]);
+      return qoi_benchmark::help(argv[0]);
     }
 
   const auto runs = std::stoi(argv[1]);
@@ -321,7 +325,7 @@ int main(int argc, char** argv)try{
   }
   opt.runs = static_cast<unsigned>(runs);
 
-  const auto result = benchmark_directory(argv[2], opt);
+  const auto result = qoi_benchmark::benchmark_directory(argv[2], opt);
   if(result.count > 0)
     std::cout << "# Grand total for " << argv[2] << '\n'
               << result.print(opt) << std::endl;
