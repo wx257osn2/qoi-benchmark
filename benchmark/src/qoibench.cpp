@@ -36,6 +36,8 @@
 #include"implementation_macro.hpp"
 #include"implementations.hpp"
 
+#include"thread_pool.hpp"
+
 #include<chrono>
 #include<iostream>
 #include<filesystem>
@@ -49,6 +51,8 @@
 #include<cstdint>
 #include<iomanip>
 #include<cstring>
+#include<charconv>
+#include<variant>
 
 namespace qoi_benchmark{
 
@@ -62,6 +66,7 @@ struct options{
   bool allow_broken_implementation = false;
   OPTIONS_DECLARATION(IMPLEMENTATIONS)
   unsigned runs;
+  unsigned threads = 1;
   bool parse_option(std::string_view argv){
     if(argv == "--nowarmup")
       this->warmup = false;
@@ -77,6 +82,16 @@ struct options{
       this->only_totals = true;
     else if(argv == "--nohalt")
       this->allow_broken_implementation = true;
+    else if(argv.starts_with("--threads=")){
+      const auto result = std::from_chars(argv.data()+std::strlen("--threads="), argv.data()+argv.size(), this->threads);
+      if(result.ptr != argv.data()+argv.size() || result.ec != std::errc{}){
+        if(result.ec == std::errc::invalid_argument)
+          throw std::runtime_error(std::string{"invalid argument: "} + argv.data());
+        if(result.ec == std::errc::result_out_of_range)
+          throw std::range_error(std::string{"threads count out of range: "} + (argv.data()+std::strlen("--threads=")));
+        throw std::runtime_error(std::string{"invalid threads count: "} + (argv.data()+std::strlen("--threads=")));
+      }
+    }
     OPTIONS_IMPLEMENTATION(IMPLEMENTATIONS)
     else
       return false;
@@ -255,7 +270,8 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
   return result;
 }
 
-static inline benchmark_result_t benchmark_directory(const std::filesystem::path& path, const options& opt){
+using thread_pool_type = thread_pool<benchmark_result_t, benchmark_result_t(*)(const std::filesystem::path&, const options& opt), std::filesystem::path, const options&>;
+static inline benchmark_result_t benchmark_directory(const std::filesystem::path& path, const options& opt, std::optional<thread_pool_type>& threads){
   if(!std::filesystem::is_directory(path))
     throw std::runtime_error(path.string() + " is not a directory");
 
@@ -264,22 +280,45 @@ static inline benchmark_result_t benchmark_directory(const std::filesystem::path
   if(opt.recurse)
     for(const auto& x : std::ranges::subrange{std::filesystem::directory_iterator{path}, std::filesystem::directory_iterator{}})
       if(x.is_directory())
-        results += benchmark_directory(x, opt);
+        results += benchmark_directory(x, opt, threads);
 
-  bool first = true;
-  for(const auto& x : std::ranges::subrange{std::filesystem::directory_iterator{path}, std::filesystem::directory_iterator{}}){
-    auto xp = x.path();
-    if(x.is_directory() || xp.extension() != ".png")
-      continue;
-    if(std::exchange(first, false))
-      std::cout << "## Benchmarking " << path.string() << "/*.png -- " << opt.runs << " runs\n\n";
+  if(threads){
+    std::vector<std::pair<std::future<benchmark_result_t>, std::string>> futures;
+    bool first = true;
+    for(const auto& x : std::ranges::subrange{std::filesystem::directory_iterator{path}, std::filesystem::directory_iterator{}}){
+      auto xp = x.path();
+      if(x.is_directory() || xp.extension() != ".png")
+        continue;
+      if(std::exchange(first, false))
+        std::cout << "## Benchmarking " << path.string() << "/*.png -- " << opt.runs << " runs\n\n";
 
-    const auto result = benchmark_image(xp, opt);
-    if(!opt.only_totals)
-      std::cout << "## " << xp.string() << " size: " << result.w << 'x' << result.h << ", channels: " << +result.c << '\n'
-                << result.print(opt) << std::endl;
+      futures.emplace_back(threads->push(benchmark_image, xp, opt), xp.string());
+    }
+    for(auto&& [f, xp] : futures){
+      const auto result = f.get();
+      if(!opt.only_totals)
+        std::cout << "## " << xp << " size: " << result.w << 'x' << result.h << ", channels: " << +result.c << '\n'
+                  << result.print(opt) << std::endl;
 
-    results += result;
+      results += result;
+    }
+  }
+  else{
+    bool first = true;
+    for(const auto& x : std::ranges::subrange{std::filesystem::directory_iterator{path}, std::filesystem::directory_iterator{}}){
+      auto xp = x.path();
+      if(x.is_directory() || xp.extension() != ".png")
+        continue;
+      if(std::exchange(first, false))
+        std::cout << "## Benchmarking " << path.string() << "/*.png -- " << opt.runs << " runs\n\n";
+
+      const auto result = benchmark_image(xp, opt);
+      if(!opt.only_totals)
+        std::cout << "## " << xp.string() << " size: " << result.w << 'x' << result.h << ", channels: " << +result.c << '\n'
+                  << result.print(opt) << std::endl;
+
+      results += result;
+    }
   }
 
   if(results.count > 0)
@@ -299,6 +338,10 @@ static inline int help(const char* argv_0, std::ostream& os = std::cout){
         "    --norecurse ... don't descend into directories\n"
         "    --onlytotals .. don't print individual image results\n"
         "    --nohalt ...... don't stop if some implementation fail validation\n"
+        "    --threads=n ... multithread execution, where n is threads count (default = 1)\n"
+        "                    when n = 0 or a value greater than the hardware-supported concurrency,\n"
+        "                    the maximum number of parallel threads supported by the hardware\n"
+        "                    will be launched."
         HELP(IMPLEMENTATIONS)
         "Examples\n"
         "    ./" << argv_0 << " 10 images/textures/\n"
@@ -325,7 +368,11 @@ int main(int argc, char** argv)try{
   }
   opt.runs = static_cast<unsigned>(runs);
 
-  const auto result = qoi_benchmark::benchmark_directory(argv[2], opt);
+  std::optional<qoi_benchmark::thread_pool_type> threads = std::nullopt;
+  if(opt.threads != 1)
+    threads.emplace(opt.threads == 0 ? std::max(1u, std::thread::hardware_concurrency()) : opt.threads);
+
+  const auto result = qoi_benchmark::benchmark_directory(argv[2], opt, threads);
   if(result.count > 0)
     std::cout << "# Grand total for " << argv[2] << '\n'
               << result.print(opt) << std::endl;

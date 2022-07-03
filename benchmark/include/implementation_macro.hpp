@@ -44,8 +44,11 @@
 #define OUTPUT_IMPLEMENTATION(impls) CAT(OUTPUT_IMPLEMENTATION_I impls, _END)
 
 #define VERIFY_CALL_(name, ident) \
-  if(opt.CAT(run_, ident)) \
-    result.ident.valid = result.ident.valid && verify(name, &::CAT(ident, _encode), &::CAT(ident, _decode), &::CAT(ident, _free));
+  { \
+    std::atomic_ref<bool> valid{result.ident.valid}; \
+    if(opt.CAT(run_, ident) && valid && !verify(name, &::CAT(ident, _encode), &::CAT(ident, _decode), &::CAT(ident, _free))) \
+      valid = false; \
+  }
 #define VERIFY_CALL_I(name, ident)  VERIFY_CALL_(name, ident) VERIFY_CALL_II
 #define VERIFY_CALL_II(name, ident) VERIFY_CALL_(name, ident) VERIFY_CALL_I
 #define VERIFY_CALL_I_END
