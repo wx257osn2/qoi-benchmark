@@ -34,4 +34,4 @@ jobs:
       run: make -j
     - name: run
       shell: bash
-      run: benchmark/bin/qoibench 10 images
+      run: benchmark/bin/qoibench 10 images --threads=0
