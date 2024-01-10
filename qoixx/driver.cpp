@@ -71,22 +71,6 @@ struct container_operator<qoixx_driver::pointer_and_size>{
   static constexpr pusher create_pusher(target_type& t)noexcept{
     return {&t};
   }
-  struct puller{
-    static constexpr bool is_contiguous = true;
-    const std::uint8_t* t;
-    inline std::uint8_t pull()noexcept{
-      return *t++;
-    }
-    inline const std::uint8_t* raw_pointer()noexcept{
-      return t;
-    }
-    inline void advance(std::size_t n)noexcept{
-      t += n;
-    }
-  };
-  static puller create_puller(const target_type& t)noexcept{
-    return {t.ptr.get()};
-  }
   static inline std::size_t size(const target_type& t)noexcept{
     return static_cast<std::size_t>(t.size);
   }
