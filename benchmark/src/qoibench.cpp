@@ -341,7 +341,7 @@ static inline int help(const char* argv_0, std::ostream& os = std::cout){
         "    --threads=n ... multithread execution, where n is threads count (default = 1)\n"
         "                    when n = 0 or a value greater than the hardware-supported concurrency,\n"
         "                    the maximum number of parallel threads supported by the hardware\n"
-        "                    will be launched."
+        "                    will be launched.\n"
         HELP(IMPLEMENTATIONS)
         "Examples\n"
         "    ./" << argv_0 << " 10 images/textures/\n"
