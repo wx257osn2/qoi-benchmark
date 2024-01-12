@@ -10,3 +10,6 @@
 [submodule "rapid-qoi/rapid-qoi"]
 	path = rapid-qoi/rapid-qoi
 	url = https://github.com/zakarumych/rapid-qoi
+[submodule "qoi-fu/qoi-fu"]
+	path = qoi-fu/qoi-fu
+	url = https://github.com/pfusik/qoi-fu

@@ -8,6 +8,8 @@ Cross-language benchmark for [QOI](https://github.com/phoboslab/qoi) implementat
 - [`qoixx`](https://github.com/wx257osn2/qoixx)
 - [`qoi-rust`](https://github.com/aldanor/qoi-rust)
 - [`rapid-qoi`](https://github.com/zakarumych/rapid-qoi)
+- [`qoi-fu`](https://github.com/pfusik/qoi-fu)
+    - `qoi-fu_cxx` : implementation transpiled to C++
 
 ## Usage
 
@@ -22,7 +24,7 @@ Cross-language benchmark for [QOI](https://github.com/phoboslab/qoi) implementat
 - On Host
     - Prerequisites:
         - `gcc` for `qoi`
-        - `g++` supporting `-std=c++2a` for `qoixx`
+        - `g++` supporting `-std=c++2a` for `qoixx` and `qoi-fu_cxx`
         - `cargo` and Rust toolchains for `qoi-rust` and `rapid-qoi`
         - `make`
     - ```console
