@@ -1,10 +1,8 @@
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#pragma GCC diagnostic ignored "-Wunused-function"
 #elif defined(_MSC_VER)
 #define _CRT_SECURE_NO_WARNINGS
-#pragma warning(push)
-#pragma warning(disable: 4820 4365 4505)
 #endif
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
@@ -12,21 +10,10 @@
 #include"stb_image.h"
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
-#elif defined(_MSC_VER)
-#pragma warning(pop)
 #endif
 
 #define QOI_NO_STDIO
-#if defined(_MSC_VER)
-#define _CRT_SECURE_NO_WARNINGS
-#pragma warning(push)
-#pragma warning(disable: 4820 4365 4244 4242)
-#endif
 #include"qoi.h"
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
 #include"qoixx.h"
 #include"qoi_rust.h"
 #include"rapid-qoi.h"
