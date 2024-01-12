@@ -158,7 +158,50 @@ static inline bool compare(const ::qoi_desc& lhs, const ::qoi_desc& rhs){
   return lhs.width == rhs.width && lhs.height == rhs.height && lhs.channels == rhs.channels && lhs.colorspace == rhs.colorspace;
 }
 
-static inline bool verify(const char* name, const std::filesystem::path& p, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*), const std::uint8_t* pixels, const qoi_desc& desc, const std::uint8_t* encoded, int encoded_size, bool shelve)try{
+template<bool False = false>
+static std::vector<std::uint8_t> convert_to_argb_int(const std::uint8_t* pixels, unsigned int num, unsigned char channels){
+  std::vector<std::uint8_t> data(num*4);
+  if(channels == 4){
+    for(auto i : std::views::iota(0u, num))
+      if constexpr(std::endian::native == std::endian::little){
+        // rgba -> bgra
+        data[i*4]   = pixels[i*4+2];
+        data[i*4+1] = pixels[i*4+1];
+        data[i*4+2] = pixels[i*4+0];
+        data[i*4+3] = pixels[i*4+3];
+      }
+      else if constexpr(std::endian::native == std::endian::big){
+        // rgba -> argb
+        data[i*4]   = pixels[i*4+3];
+        data[i*4+1] = pixels[i*4+0];
+        data[i*4+2] = pixels[i*4+1];
+        data[i*4+3] = pixels[i*4+2];
+      }
+      else
+        static_assert(False, "unsupported endian");
+    return data;
+  }
+  for(auto i : std::views::iota(0u, num))
+    if constexpr(std::endian::native == std::endian::little){
+      // rgb -> bgra
+      data[i*4]   = pixels[i*3+2];
+      data[i*4+1] = pixels[i*3+1];
+      data[i*4+2] = pixels[i*3];
+      data[i*4+3] = 0xff;
+    }
+    else if constexpr(std::endian::native == std::endian::big){
+      // rgb -> argb
+      data[i*4]   = 0xff;
+      data[i*4+1] = pixels[i*3];
+      data[i*4+2] = pixels[i*3+1];
+      data[i*4+3] = pixels[i*3+2];
+    }
+    else
+      static_assert(False, "unsupported endian");
+  return data;
+}
+
+static inline bool verify_rgb(const char* name, const std::filesystem::path& p, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*), const std::uint8_t* pixels, const qoi_desc& desc, const std::uint8_t* encoded, int encoded_size, bool shelve)try{
   {// qoi.encode -> decoder == pixels
     qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(encoded, encoded_size, &dc, desc.channels)), free};
@@ -173,6 +216,40 @@ static inline bool verify(const char* name, const std::filesystem::path& p, void
     ::qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(&::free)>{static_cast<std::uint8_t*>(::qoi_decode(enc.get(), size, &dc, desc.channels)), &::free};
     if(!compare(desc, dc) || std::memcmp(pixels, pixs.get(), dc.width*dc.height*dc.channels) != 0)
+      throw std::runtime_error(std::string{name} + " encoder pixel mismatch for " + p.string());
+  }
+  {// encoder -> decoder == pixels
+    ::qoi_desc dc;
+    const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(enc.get(), size, &dc, desc.channels)), free};
+    if(!compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
+      throw std::runtime_error(std::string{name} + " roundtrip pixel mismatch for " + p.string());
+  }
+  return true;
+}catch(std::exception& e){
+  if(shelve){
+    std::cout << e.what() << std::endl;
+    return false;
+  }
+  else
+    throw;
+}
+
+static inline bool verify_argb_int(const char* name, const std::filesystem::path& p, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*), const std::uint8_t* pixels, const qoi_desc& desc, const std::uint8_t* encoded, int encoded_size, bool shelve)try{
+  {// qoi.encode -> decoder == pixels
+    qoi_desc dc;
+    const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(encoded, encoded_size, &dc, desc.channels)), free};
+    if(!compare(desc, dc) || pixs == nullptr || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
+      throw std::runtime_error(std::string{name} + " decoder pixel mismatch for " + p.string());
+  }
+  int size;
+  const auto enc = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(encoder(pixels, &desc, &size)), free};
+  if(enc == nullptr || size != encoded_size)
+    throw std::runtime_error(std::string{name} + " encoder can't encode " + p.string());
+  {// encoder -> qoi.decode == pixels
+    ::qoi_desc dc;
+    const auto pixs = std::unique_ptr<std::uint8_t[], decltype(&::free)>{static_cast<std::uint8_t*>(::qoi_decode(enc.get(), size, &dc, desc.channels)), &::free};
+    const auto converted = convert_to_argb_int(pixs.get(), desc.width * desc.height, desc.channels);
+    if(!compare(desc, dc) || std::memcmp(pixels, converted.data(), dc.width*dc.height*dc.channels) != 0)
       throw std::runtime_error(std::string{name} + " encoder pixel mismatch for " + p.string());
   }
   {// encoder -> decoder == pixels
@@ -208,7 +285,7 @@ do{ \
 }while(0)
 
 #define BENCHMARK_DECODE(opt, result, f, d) BENCHMARK(opt, result, ::qoi_desc dc;, const unique_ptr_for_benchmark<decltype(&d)> pixs(static_cast<std::uint8_t*>(f(encoded_qoi.get(), out_len, &dc, channels)), &d);)
-#define BENCHMARK_ENCODE(opt, result, f, d) BENCHMARK(opt, result, int size;, const unique_ptr_for_benchmark<decltype(&d)> pixs(static_cast<std::uint8_t*>(f(pixels.get(), &desc, &size)), &d);)
+#define BENCHMARK_ENCODE(opt, result, f, d, pixel_format) BENCHMARK(opt, result, int size;, const unique_ptr_for_benchmark<decltype(&d)> pixs(static_cast<std::uint8_t*>(f(CAT(PTR_OF_, pixel_format), &desc, &size)), &d);)
 
 static inline benchmark_result_t benchmark_image(const std::filesystem::path& p, const options& opt){
   int w, h, channels;
@@ -233,9 +310,9 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
   if(!pixels)
     throw std::runtime_error("Error decoding " + p.string());
 
-  const auto verify = [&](const char* name, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*)){
-    return qoi_benchmark::verify(name, p, encoder, decoder, free, pixels.get(), desc, encoded_qoi.get(), out_len, opt.allow_broken_implementation);
-  };
+  const auto argb_int_pixels = convert_to_argb_int(pixels.get(), desc.width * desc.height, desc.channels);
+#define PTR_OF_rgb pixels.get()
+#define PTR_OF_argb_int argb_int_pixels.data()
 
   benchmark_result_t result{desc};
   if(opt.verify){
@@ -248,7 +325,7 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
   }
 
   if(opt.encode){
-    BENCHMARK_ENCODE(opt, result.qoi.encode_time, ::qoi_encode, ::free);
+    BENCHMARK_ENCODE(opt, result.qoi.encode_time, ::qoi_encode, ::free, rgb);
     BENCHMARK_ENCODE_CALL(IMPLEMENTATIONS)
   }
 

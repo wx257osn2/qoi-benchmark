@@ -2,8 +2,10 @@
 #define IMPLEMENTATIONS_HPP_INCLUDED_
 
 #define IMPLEMENTATIONS \
-  ("qoixx", qoixx) \
-  ("qoi-rust", qoi_rust) \
-  ("rapid-qoi", rapid_qoi)
+/*(name str,    name ident, pixel format of 3ch) */ \
+/*("qoi",       qoi,        rgb) */ \
+  ("qoixx",     qoixx,      rgb) \
+  ("qoi-rust",  qoi_rust,   rgb) \
+  ("rapid-qoi", rapid_qoi,  rgb) \
 
 #endif//IMPLEMENTATIONS_HPP_INCLUDED_
