@@ -1,6 +1,10 @@
 #ifndef IMPLEMENTATIONS_HPP_INCLUDED_
 #define IMPLEMENTATIONS_HPP_INCLUDED_
 
+#include"qoixx.h"
+#include"qoi_rust.h"
+#include"rapid-qoi.h"
+
 #define IMPLEMENTATIONS \
 /*(name str,    name ident, pixel format of 3ch) */ \
 /*("qoi",       qoi,        rgb) */ \

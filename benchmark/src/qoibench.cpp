@@ -14,9 +14,6 @@
 
 #define QOI_NO_STDIO
 #include"qoi.h"
-#include"qoixx.h"
-#include"qoi_rust.h"
-#include"rapid-qoi.h"
 
 #include"implementation_macro.hpp"
 #include"implementations.hpp"
