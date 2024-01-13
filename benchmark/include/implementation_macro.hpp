@@ -34,6 +34,13 @@
 #define OPERATOR_PLUS_EQUAL_IMPLEMENTATION_II_END
 #define OPERATOR_PLUS_EQUAL_IMPLEMENTATION(impls) CAT(OPERATOR_PLUS_EQUAL_IMPLEMENTATION_I impls, _END)
 
+#define MAX_NAME_LENGTH_(name, _0, _1) detail::max{std::string_view{name}.size()} +
+#define MAX_NAME_LENGTH_I(name, _0, _1)  MAX_NAME_LENGTH_(name, _0, _1) MAX_NAME_LENGTH_II
+#define MAX_NAME_LENGTH_II(name, _0, _1) MAX_NAME_LENGTH_(name, _0, _1) MAX_NAME_LENGTH_I
+#define MAX_NAME_LENGTH_I_END detail::max<std::size_t>{3/*qoi*/}
+#define MAX_NAME_LENGTH_II_END detail::max<std::size_t>{3/*qoi*/}
+#define MAX_NAME_LENGTH(impls) (CAT(MAX_NAME_LENGTH_I impls, _END)).t
+
 #define OUTPUT_IMPLEMENTATION_(name, ident, _) \
   if(printer.opt->CAT(run_, ident)) \
     output_lib(os, name, res, res.ident);
@@ -74,7 +81,7 @@
 #define BENCHMARK_ENCODE_CALL_II_END
 #define BENCHMARK_ENCODE_CALL(impls) CAT(BENCHMARK_ENCODE_CALL_I impls, _END)
 
-#define HELP_(name, _0, _1) "    --no" name " " << std::string(9+1-std::strlen(name), '.') << " don't execute " name "\n"
+#define HELP_(name, _0, _1) "    --no" name " " << std::string(benchmark_result_t::printer::max_name_length+1-std::strlen(name), '.') << " don't execute " name "\n"
 #define HELP_I(name, _0, _1)  HELP_(name, _0, _1) HELP_II
 #define HELP_II(name, _0, _1) HELP_(name, _0, _1) HELP_I
 #define HELP_I_END

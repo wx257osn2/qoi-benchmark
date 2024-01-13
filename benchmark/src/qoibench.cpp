@@ -81,6 +81,18 @@ struct options{
   }
 };
 
+namespace detail{
+
+template<typename T>
+struct max{
+  T t;
+  constexpr max operator+(const max<T>& rhs)const{
+    return max{std::max(this->t, rhs.t)};
+  }
+};
+
+}
+
 using nanosec = std::chrono::duration<double, std::nano>;
 struct benchmark_result_t{
   struct lib_t{
@@ -124,7 +136,7 @@ struct benchmark_result_t{
         return os;
       }
     };
-    static constexpr std::size_t max_name_length = 9;
+    static constexpr std::size_t max_name_length = MAX_NAME_LENGTH(IMPLEMENTATIONS);
     static std::ostream& output_lib(std::ostream& os, std::string_view name, const benchmark_result_t& res, const lib_t& lib){
       if(!lib.valid)
         return os << name << " outputs invalid content\n";
