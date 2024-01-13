@@ -46,9 +46,9 @@ void your_own_qoi_free(void* ptr); // provide appropriate deallocation method co
 ```
 
 Then, create static library (`libyour_own_qoi.a`) with your implementations.
-Finally, add some codes that use your static library in `benchmark/src/qoibench.cpp` .
+Finally, add new entry about your implementation in [`benchmark/include/implementations.hpp`](https://github.com/wx257osn2/qoi-benchmark/blob/master/benchmark/include/implementations.hpp).
 
-The example is [here](https://github.com/wx257osn2/qoi-benchmark/commit/bf6f803de2ac63cd0105cdb66bf458dbb0d6d25a).
+The example is [here](https://github.com/wx257osn2/qoi-benchmark/commit/34fb816c61020cd67eece14df26ccf0f3997e11a).
 
 ## License
 
