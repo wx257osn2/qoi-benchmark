@@ -1,3 +1,7 @@
+#ifndef QOIXX_PREFIX
+#error "Define QOIXX_PREFIX"
+#endif
+
 #include"qoixx.hpp"
 #include<memory>
 #include<cstdint>
@@ -11,6 +15,9 @@
 #define QOI_MALLOC(sz) std::malloc(sz)
 #define QOI_FREE(p)    std::free(p)
 #endif
+
+#define CAT_I(a, b) a ## b
+#define CAT(a, b) CAT_I(a, b)
 
 typedef struct{
   unsigned int width;
@@ -83,7 +90,7 @@ struct container_operator<qoixx_driver::pointer_and_size>{
 
 extern "C"{
 
-void* qoixx_encode(const void* data, const qoi_desc* desc, int* out_len){
+void* CAT(QOIXX_PREFIX, _encode)(const void* data, const qoi_desc* desc, int* out_len){
   const qoixx::qoi::desc d = {
     .width = desc->width,
     .height = desc->height,
@@ -100,7 +107,7 @@ void* qoixx_encode(const void* data, const qoi_desc* desc, int* out_len){
   }
 }
 
-void* qoixx_decode(const void* data, int size, qoi_desc* desc, int channels){
+void* CAT(QOIXX_PREFIX, _decode)(const void* data, int size, qoi_desc* desc, int channels){
   try{
     auto [dec, xxdesc] = qoixx::qoi::decode<qoixx_driver::pointer_and_size>(static_cast<const std::uint8_t*>(data), static_cast<std::size_t>(size), static_cast<std::uint8_t>(channels));
     desc->width = xxdesc.width;
@@ -113,7 +120,7 @@ void* qoixx_decode(const void* data, int size, qoi_desc* desc, int channels){
   }
 }
 
-void qoixx_free(void* ptr){
+void CAT(QOIXX_PREFIX, _free)(void* ptr){
   QOI_FREE(ptr);
 }
 

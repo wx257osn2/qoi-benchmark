@@ -1,2 +1,2 @@
-/driver.o
-/libqoixx.a
+/driver*.o
+/libqoixx*.a
