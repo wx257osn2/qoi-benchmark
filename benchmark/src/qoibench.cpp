@@ -18,6 +18,7 @@
 #include"implementation_macro.hpp"
 #include"implementations.hpp"
 
+#include"suppress_optimization.hpp"
 #include"thread_pool.hpp"
 
 #include<chrono>
@@ -284,6 +285,7 @@ do{ \
     preamble \
     const auto start = std::chrono::high_resolution_clock::now(); \
     __VA_ARGS__ \
+    detail::suppress_optimization(pixs.get()); \
     const auto end = std::chrono::high_resolution_clock::now(); \
     if(i > 0) \
       time += std::chrono::duration_cast<std::chrono::nanoseconds>(end - start); \
