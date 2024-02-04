@@ -89,18 +89,6 @@ struct options{
   }
 };
 
-namespace detail{
-
-template<typename T>
-struct max{
-  T t;
-  constexpr max operator+(const max<T>& rhs)const{
-    return max{std::max(this->t, rhs.t)};
-  }
-};
-
-}
-
 struct qoi_stat{
   std::uint64_t rgba = 0;
   std::uint64_t rgb = 0;

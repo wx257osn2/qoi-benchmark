@@ -1,6 +1,8 @@
 #ifndef IMPLEMENTATION_MACRO_HPP_INCLUDED_
 #define IMPLEMENTATION_MACRO_HPP_INCLUDED_
 
+#include<algorithm>
+
 #define CAT_I(a, b) a ## b
 #define CAT(a, b) CAT_I(a, b)
 
@@ -34,11 +36,23 @@
 #define OPERATOR_PLUS_EQUAL_IMPLEMENTATION_II_END
 #define OPERATOR_PLUS_EQUAL_IMPLEMENTATION(impls) CAT(OPERATOR_PLUS_EQUAL_IMPLEMENTATION_I impls, _END)
 
-#define MAX_NAME_LENGTH_(name, _0, _1) detail::max{std::string_view{name}.size()} +
+namespace qoi_benchmark::detail{
+
+template<typename T>
+struct max{
+  T t;
+  constexpr max operator+(const max<T>& rhs)const{
+    return max{std::max(this->t, rhs.t)};
+  }
+};
+
+}
+
+#define MAX_NAME_LENGTH_(name, _0, _1) qoi_benchmark::detail::max{std::string_view{name}.size()} +
 #define MAX_NAME_LENGTH_I(name, _0, _1)  MAX_NAME_LENGTH_(name, _0, _1) MAX_NAME_LENGTH_II
 #define MAX_NAME_LENGTH_II(name, _0, _1) MAX_NAME_LENGTH_(name, _0, _1) MAX_NAME_LENGTH_I
-#define MAX_NAME_LENGTH_I_END detail::max<std::size_t>{3/*qoi*/}
-#define MAX_NAME_LENGTH_II_END detail::max<std::size_t>{3/*qoi*/}
+#define MAX_NAME_LENGTH_I_END qoi_benchmark::detail::max<std::size_t>{3/*qoi*/}
+#define MAX_NAME_LENGTH_II_END qoi_benchmark::detail::max<std::size_t>{3/*qoi*/}
 #define MAX_NAME_LENGTH(impls) (CAT(MAX_NAME_LENGTH_I impls, _END)).t
 
 #define OUTPUT_IMPLEMENTATION_(name, ident, _) \
