@@ -50,6 +50,14 @@
 #define OUTPUT_IMPLEMENTATION_II_END
 #define OUTPUT_IMPLEMENTATION(impls) CAT(OUTPUT_IMPLEMENTATION_I impls, _END)
 
+#define MAKE_ENTRY_(name, ident, _) \
+  ret[name] = make_entry(result.ident);
+#define MAKE_ENTRY_I(name, ident, _)  MAKE_ENTRY_(name, ident, _) MAKE_ENTRY_II
+#define MAKE_ENTRY_II(name, ident, _) MAKE_ENTRY_(name, ident, _) MAKE_ENTRY_I
+#define MAKE_ENTRY_I_END
+#define MAKE_ENTRY_II_END
+#define MAKE_ENTRY(impls) CAT(MAKE_ENTRY_I impls, _END)
+
 #define VERIFY_CALL_(name, ident, pixel_format) \
   { \
     std::atomic_ref<bool> valid{result.ident.valid}; \
@@ -81,7 +89,7 @@
 #define BENCHMARK_ENCODE_CALL_II_END
 #define BENCHMARK_ENCODE_CALL(impls) CAT(BENCHMARK_ENCODE_CALL_I impls, _END)
 
-#define HELP_(name, _0, _1) "    --no" name " " << std::string(benchmark_result_t::printer::max_name_length+1-std::strlen(name), '.') << " don't execute " name "\n"
+#define HELP_(name, _0, _1) "    --no" name " " << std::string(std::max(benchmark_result_t::printer::max_name_length+1, static_cast<std::size_t>(13))-std::strlen(name), '.') << " don't execute " name "\n"
 #define HELP_I(name, _0, _1)  HELP_(name, _0, _1) HELP_II
 #define HELP_II(name, _0, _1) HELP_(name, _0, _1) HELP_I
 #define HELP_I_END

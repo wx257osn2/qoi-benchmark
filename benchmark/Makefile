@@ -6,4 +6,4 @@ clean:
 .PHONY: qoibench clean
 
 bin/qoibench: src/qoibench.cpp include/implementations.hpp include/implementation_macro.hpp lib/libqoi.a lib/libqoixx.a lib/libqoi_rust.a lib/librapid_qoi.a lib/libqoi_fu_cxx.a
-	$(CXX) -std=c++2a -Wall -Wextra -pedantic-errors -O3 -march=native -mtune=native -I .dependencies/stb -I include -o$@ $< -Llib -lqoi -lqoixx -lqoi_rust -lrapid_qoi -lqoi_fu_cxx -pthread -ldl
+	$(CXX) -std=c++2a -Wall -Wextra -pedantic-errors -O3 -march=native -mtune=native -I .dependencies/stb -I .dependencies/nlohmann_json/include -I include -o$@ $< -Llib -lqoi -lqoixx -lqoi_rust -lrapid_qoi -lqoi_fu_cxx -pthread -ldl

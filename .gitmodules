@@ -13,3 +13,6 @@
 [submodule "qoi-fu/qoi-fu"]
 	path = qoi-fu/qoi-fu
 	url = https://github.com/pfusik/qoi-fu
+[submodule "benchmark/.dependencies/nlohmann_json"]
+	path = benchmark/.dependencies/nlohmann_json
+	url = https://github.com/nlohmann/json

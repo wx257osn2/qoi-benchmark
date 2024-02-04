@@ -12,6 +12,8 @@
 #pragma GCC diagnostic pop
 #endif
 
+#include"nlohmann/json.hpp"
+
 #define QOI_NO_STDIO
 #include"qoi.h"
 
@@ -50,6 +52,7 @@ struct options{
   OPTIONS_DECLARATION(IMPLEMENTATIONS)
   unsigned runs;
   unsigned threads = 1;
+  std::filesystem::path stat_path;
   bool parse_option(std::string_view argv){
     if(argv == "--nowarmup")
       this->warmup = false;
@@ -75,6 +78,10 @@ struct options{
         throw std::runtime_error(std::string{"invalid threads count: "} + (argv.data()+std::strlen("--threads=")));
       }
     }
+    else if(argv.starts_with("--stat_path=")){
+      argv.remove_prefix(std::strlen("--stat_path="));
+      this->stat_path = argv;
+    }
     OPTIONS_IMPLEMENTATION(IMPLEMENTATIONS)
     else
       return false;
@@ -93,6 +100,60 @@ struct max{
 };
 
 }
+
+struct qoi_stat{
+  std::uint64_t rgba = 0;
+  std::uint64_t rgb = 0;
+  std::uint64_t index = 0;
+  std::uint64_t diff = 0;
+  std::uint64_t luma = 0;
+  std::uint64_t run[62] = {};
+  explicit constexpr qoi_stat() = default;
+  explicit constexpr qoi_stat(const std::uint8_t* data, std::size_t n){
+    enum{
+      qoi_index = 0x00,
+      qoi_diff = 0x40,
+      qoi_luma = 0x80,
+      qoi_run = 0xc0,
+      qoi_rgb = 0xfe,
+      qoi_rgba = 0xff
+    };
+    for(std::size_t i = 0; i < n; ++i){
+      const auto x = data[i];
+      if(x == qoi_rgba){
+        ++this->rgba;
+        i += 4;
+        continue;
+      }
+      else if(x == qoi_rgb){
+        ++this->rgb;
+        i += 3;
+        continue;
+      }
+      const auto xm = x & 0b11000000;
+      if(xm == qoi_index)
+        ++this->index;
+      if(xm == qoi_diff)
+        ++this->diff;
+      if(xm == qoi_luma){
+        ++this->luma;
+        ++i;
+      }
+      if(xm == qoi_run)
+        ++this->run[x & 0b00111111];
+    }
+  }
+  nlohmann::json to_json()const{
+    return nlohmann::json{
+      {"rgba", this->rgba},
+      {"rgb", this->rgb},
+      {"index", this->index},
+      {"diff", this->diff},
+      {"luma", this->luma},
+      {"run", std::accumulate(std::cbegin(this->run), std::cend(this->run), 0)},
+    };
+  }
+};
 
 using nanosec = std::chrono::duration<double, std::nano>;
 struct benchmark_result_t{
@@ -161,6 +222,25 @@ struct benchmark_result_t{
     return printer{this, &opt};
   }
 };
+
+static inline nlohmann::json make_entry(const benchmark_result_t::lib_t& lib){
+  return nlohmann::json{
+    {"encode_time", lib.encode_time.count()},
+    {"decode_time", lib.decode_time.count()},
+  };
+}
+
+static inline nlohmann::json make_entry(const benchmark_result_t& result, const qoi_stat& stat){
+  nlohmann::json ret = {
+    {"width", result.w},
+    {"height", result.h},
+    {"channels", result.c},
+    {"stat", stat.to_json()}
+  };
+  ret["qoi"] = make_entry(result.qoi);
+  MAKE_ENTRY(IMPLEMENTATIONS)
+  return ret;
+}
 
 static inline bool compare(const ::qoi_desc& lhs, const ::qoi_desc& rhs){
   return lhs.width == rhs.width && lhs.height == rhs.height && lhs.channels == rhs.channels && lhs.colorspace == rhs.colorspace;
@@ -296,7 +376,7 @@ do{ \
 #define BENCHMARK_DECODE(opt, result, f, d) BENCHMARK(opt, result, ::qoi_desc dc;, const unique_ptr_for_benchmark<decltype(&d)> pixs(static_cast<std::uint8_t*>(f(encoded_qoi.get(), out_len, &dc, channels)), &d);)
 #define BENCHMARK_ENCODE(opt, result, f, d, pixel_format) BENCHMARK(opt, result, int size;, const unique_ptr_for_benchmark<decltype(&d)> pixs(static_cast<std::uint8_t*>(f(CAT(PTR_OF_, pixel_format), &desc, &size)), &d);)
 
-static inline benchmark_result_t benchmark_image(const std::filesystem::path& p, const options& opt){
+static inline std::pair<benchmark_result_t, qoi_stat> benchmark_image(const std::filesystem::path& p, const options& opt){
   int w, h, channels;
 
   if(!stbi_info(p.string().c_str(), &w, &h, &channels))
@@ -338,23 +418,30 @@ static inline benchmark_result_t benchmark_image(const std::filesystem::path& p,
     BENCHMARK_ENCODE_CALL(IMPLEMENTATIONS)
   }
 
-  return result;
+  if(not opt.stat_path.empty())
+    return std::make_pair(result, qoi_stat{encoded_qoi.get(), static_cast<std::size_t>(out_len)});
+  else
+    return std::make_pair(result, qoi_stat{});
 }
 
-using thread_pool_type = thread_pool<benchmark_result_t, benchmark_result_t(*)(const std::filesystem::path&, const options& opt), std::filesystem::path, const options&>;
-static inline benchmark_result_t benchmark_directory(const std::filesystem::path& path, const options& opt, std::optional<thread_pool_type>& threads){
+using thread_pool_type = thread_pool<std::pair<benchmark_result_t, qoi_stat>, std::pair<benchmark_result_t, qoi_stat>(*)(const std::filesystem::path&, const options& opt), std::filesystem::path, const options&>;
+static inline std::pair<benchmark_result_t, nlohmann::json> benchmark_directory(const std::filesystem::path& path, const options& opt, std::optional<thread_pool_type>& threads){
   if(!std::filesystem::is_directory(path))
     throw std::runtime_error(path.string() + " is not a directory");
 
   benchmark_result_t results = {};
+  nlohmann::json json = nlohmann::json::array();
 
   if(opt.recurse)
     for(const auto& x : std::ranges::subrange{std::filesystem::directory_iterator{path}, std::filesystem::directory_iterator{}})
-      if(x.is_directory())
-        results += benchmark_directory(x, opt, threads);
+      if(x.is_directory()){
+        const auto [res, j] = benchmark_directory(x, opt, threads);
+        results += res;
+        json.insert(json.cend(), j.cbegin(), j.cend());
+      }
 
   if(threads){
-    std::vector<std::pair<std::future<benchmark_result_t>, std::string>> futures;
+    std::vector<std::pair<std::future<std::pair<benchmark_result_t, qoi_stat>>, std::string>> futures;
     bool first = true;
     for(const auto& x : std::ranges::subrange{std::filesystem::directory_iterator{path}, std::filesystem::directory_iterator{}}){
       auto xp = x.path();
@@ -366,11 +453,13 @@ static inline benchmark_result_t benchmark_directory(const std::filesystem::path
       futures.emplace_back(threads->push(benchmark_image, xp, opt), xp.string());
     }
     for(auto&& [f, xp] : futures){
-      const auto result = f.get();
+      const auto [result, stat] = f.get();
       if(!opt.only_totals)
         std::cout << "## " << xp << " size: " << result.w << 'x' << result.h << ", channels: " << +result.c << '\n'
                   << result.print(opt) << std::endl;
 
+      if(not opt.stat_path.empty())
+        json.push_back(nlohmann::json{{"path", xp}, {"data", make_entry(result, stat)}});
       results += result;
     }
   }
@@ -383,11 +472,13 @@ static inline benchmark_result_t benchmark_directory(const std::filesystem::path
       if(std::exchange(first, false))
         std::cout << "## Benchmarking " << path.string() << "/*.png -- " << opt.runs << " runs\n\n";
 
-      const auto result = benchmark_image(xp, opt);
+      const auto [result, stat] = benchmark_image(xp, opt);
       if(!opt.only_totals)
         std::cout << "## " << xp.string() << " size: " << result.w << 'x' << result.h << ", channels: " << +result.c << '\n'
                   << result.print(opt) << std::endl;
 
+      if(not opt.stat_path.empty())
+        json.push_back(nlohmann::json{{"path", xp.string()}, {"data", make_entry(result, stat)}});
       results += result;
     }
   }
@@ -396,23 +487,24 @@ static inline benchmark_result_t benchmark_directory(const std::filesystem::path
     std::cout << "## Total for " << path << '\n'
               << results.print(opt) << std::endl;
 
-  return results;
+  return std::make_pair(results, json);
 }
 
 static inline int help(const char* argv_0, std::ostream& os = std::cout){
   os << "Usage: " << argv_0 << " <iterations> <directory> [options...]\n"
         "Options:\n"
-        "    --nowarmup ..... don't perform a warmup run\n"
-        "    --noverify ..... don't verify qoi roundtrip\n"
-        "    --noencode ..... don't run encoders\n"
-        "    --nodecode ..... don't run decoders\n"
-        "    --norecurse .... don't descend into directories\n"
-        "    --onlytotals ... don't print individual image results\n"
-        "    --nohalt ....... don't stop if some implementation fail validation\n"
-        "    --threads=n .... multithread execution, where n is threads count (default = 1)\n"
-        "                     when n = 0 or a value greater than the hardware-supported concurrency,\n"
-        "                     the maximum number of parallel threads supported by the hardware\n"
-        "                     will be launched.\n"
+        "    --nowarmup ....... don't perform a warmup run\n"
+        "    --noverify ....... don't verify qoi roundtrip\n"
+        "    --noencode ....... don't run encoders\n"
+        "    --nodecode ....... don't run decoders\n"
+        "    --norecurse ...... don't descend into directories\n"
+        "    --onlytotals ..... don't print individual image results\n"
+        "    --nohalt ......... don't stop if some implementation fail validation\n"
+        "    --threads=n ...... multithread execution, where n is threads count (default = 1)\n"
+        "                       when n = 0 or a value greater than the hardware-supported concurrency,\n"
+        "                       the maximum number of parallel threads supported by the hardware\n"
+        "                       will be launched.\n"
+        "    --stat_path=path . output statistic json to path.\n"
         HELP(IMPLEMENTATIONS)
         "Examples\n"
         "    ./" << argv_0 << " 10 images/textures/\n"
@@ -443,12 +535,17 @@ int main(int argc, char** argv)try{
   if(opt.threads != 1)
     threads.emplace(opt.threads == 0 ? std::max(1u, std::thread::hardware_concurrency()) : opt.threads);
 
-  const auto result = qoi_benchmark::benchmark_directory(argv[2], opt, threads);
+  const auto [result, json] = qoi_benchmark::benchmark_directory(argv[2], opt, threads);
   if(result.count > 0)
     std::cout << "# Grand total for " << argv[2] << '\n'
               << result.print(opt) << std::endl;
   else
     std::cout << "No images found in " << argv[2] << std::endl;
+
+  if(not opt.stat_path.empty()){
+    std::ofstream file(opt.stat_path);
+    file << json << std::endl;
+  }
 }catch(const std::runtime_error& e){
   std::cout << e.what() << std::endl;
   return EXIT_FAILURE;
