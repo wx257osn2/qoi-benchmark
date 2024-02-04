@@ -507,8 +507,8 @@ static inline int help(const char* argv_0, std::ostream& os = std::cout){
         "    --stat_path=path . output statistic json to path.\n"
         HELP(IMPLEMENTATIONS)
         "Examples\n"
-        "    ./" << argv_0 << " 10 images/textures/\n"
-        "    ./" << argv_0 << " 1 images/textures/ --nowarmup" << std::endl;
+        "    " << argv_0 << " 10 images/textures/\n"
+        "    " << argv_0 << " 1 images/textures/ --nowarmup" << std::endl;
   return EXIT_FAILURE;
 }
 
