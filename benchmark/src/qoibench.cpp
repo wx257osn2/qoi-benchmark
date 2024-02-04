@@ -96,12 +96,10 @@ struct max{
 using nanosec = std::chrono::duration<double, std::nano>;
 struct benchmark_result_t{
   struct lib_t{
-    std::size_t size;
     nanosec encode_time;
     nanosec decode_time;
     bool valid = true;
     lib_t& operator+=(const lib_t& rhs)noexcept{
-      size += rhs.size;
       encode_time += rhs.encode_time;
       decode_time += rhs.decode_time;
       valid = valid && rhs.valid;
