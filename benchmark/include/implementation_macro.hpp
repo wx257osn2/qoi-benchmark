@@ -110,4 +110,44 @@ struct max{
 #define HELP_II_END
 #define HELP(impls) CAT(HELP_I impls, _END)
 
+#define CHECK_NAME_(name, _0, _1) std::string_view{name} == implementation
+#define CHECK_NAME_I(name, _0, _1)  CHECK_NAME_(name, _0, _1) || CHECK_NAME_II
+#define CHECK_NAME_II(name, _0, _1) CHECK_NAME_(name, _0, _1) || CHECK_NAME_I
+#define CHECK_NAME_I_END false
+#define CHECK_NAME_II_END false
+#define CHECK_NAME(impls) CAT(CHECK_NAME_I impls, _END)
+
+#define PARSE_LIB_(name, ident, _) \
+  e.ident = parse_lib(data[name]); \
+  opt.CAT(run_, ident) = e.ident.encode_time.count() != 0 && e.ident.decode_time.count() != 0;
+#define PARSE_LIB_I(name, ident, _)  PARSE_LIB_(name, ident, _) PARSE_LIB_II
+#define PARSE_LIB_II(name, ident, _) PARSE_LIB_(name, ident, _) PARSE_LIB_I
+#define PARSE_LIB_I_END
+#define PARSE_LIB_II_END
+#define PARSE_LIB(impls) CAT(PARSE_LIB_I impls, _END)
+
+#define OPERATOR_DIV_EQUAL_IMPLEMENTATION_(_0, ident, _1) this->ident /= count;
+#define OPERATOR_DIV_EQUAL_IMPLEMENTATION_I(_0, ident, _1)  OPERATOR_DIV_EQUAL_IMPLEMENTATION_(_0, ident, _1) OPERATOR_DIV_EQUAL_IMPLEMENTATION_II
+#define OPERATOR_DIV_EQUAL_IMPLEMENTATION_II(_0, ident, _1) OPERATOR_DIV_EQUAL_IMPLEMENTATION_(_0, ident, _1) OPERATOR_DIV_EQUAL_IMPLEMENTATION_I
+#define OPERATOR_DIV_EQUAL_IMPLEMENTATION_I_END
+#define OPERATOR_DIV_EQUAL_IMPLEMENTATION_II_END
+#define OPERATOR_DIV_EQUAL_IMPLEMENTATION(impls) CAT(OPERATOR_DIV_EQUAL_IMPLEMENTATION_I impls, _END)
+
+#define DEFEATED_(name, ident, _) \
+  if(fastest.encode_time > entry.ident.encode_time){ \
+    fastest.encode_time = entry.ident.encode_time; \
+    encode = name; \
+  } \
+  if(fastest.decode_time > entry.ident.decode_time){ \
+    fastest.decode_time = entry.ident.decode_time; \
+    decode = name; \
+  } \
+  if(name == implementation) \
+    you = entry.ident;
+#define DEFEATED_I(name, ident, _)  DEFEATED_(name, ident, _) DEFEATED_II
+#define DEFEATED_II(name, ident, _) DEFEATED_(name, ident, _) DEFEATED_I
+#define DEFEATED_I_END
+#define DEFEATED_II_END
+#define DEFEATED(impls) CAT(DEFEATED_I impls, _END)
+
 #endif//IMPLEMENTATION_MACRO_HPP_INCLUDED_
