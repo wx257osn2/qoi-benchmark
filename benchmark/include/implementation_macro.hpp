@@ -134,11 +134,11 @@ struct max{
 #define OPERATOR_DIV_EQUAL_IMPLEMENTATION(impls) CAT(OPERATOR_DIV_EQUAL_IMPLEMENTATION_I impls, _END)
 
 #define DEFEATED_(name, ident, _) \
-  if(fastest.encode_time > entry.ident.encode_time){ \
+  if(entry.ident.encode_time.count() > 0 and fastest.encode_time > entry.ident.encode_time){ \
     fastest.encode_time = entry.ident.encode_time; \
     encode = name; \
   } \
-  if(fastest.decode_time > entry.ident.decode_time){ \
+  if(entry.ident.encode_time.count() > 0 and fastest.decode_time > entry.ident.decode_time){ \
     fastest.decode_time = entry.ident.decode_time; \
     decode = name; \
   } \
