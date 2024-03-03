@@ -211,7 +211,7 @@ static int defeated(const std::vector<entry>& entries, const options& opt, const
   std::unordered_map<std::string_view, std::pair<std::size_t, std::size_t>> summary;
   for(auto&& entry : entries){
     entry::lib_t fastest = entry.qoi;
-    std::string_view encode, decode;
+    std::string_view encode = "qoi", decode = "qoi";
     entry::lib_t you;
     DEFEATED(IMPLEMENTATIONS)
 
