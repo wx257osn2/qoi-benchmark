@@ -12,7 +12,7 @@ libqoixx_nosimd.a: driver_nosimd.o
 	$(AR) rcs $@ $<
 
 driver_nosimd.o: driver.cpp qoixx/include/qoixx.hpp
-	$(CXX) -c $(CXXFLAGS) -DQOIXX_PREFIX=qoixx_nosimd -DQOIXX_NO_SIMD -o$@ $<
+	$(CXX) -c $(CXXFLAGS) -DQOIXX_PREFIX=qoixx_nosimd -DQOIXX_NO_SIMD -DQOIXX_DECODE_WITH_TABLES=0 -o$@ $<
 
 clean:
 	$(RM) -f libqoixx.a driver.o libqoixx_nosimd.a driver_nosimd.o
