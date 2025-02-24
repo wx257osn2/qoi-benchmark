@@ -8,7 +8,7 @@
 #include"qoi-fu_cxx.h"
 
 #define IMPLEMENTATIONS \
-/*(name str,       name ident, pixel format of 3ch) */ \
+/*(name str,       name ident,   pixel format of 3ch) */ \
 /*("qoi",          qoi,          rgb) */ \
   ("qoixx",        qoixx,        rgb) \
   ("qoixx_nosimd", qoixx_nosimd, rgb) \
