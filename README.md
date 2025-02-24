@@ -10,6 +10,7 @@ Cross-language benchmark for [QOI](https://github.com/phoboslab/qoi) implementat
 - [`rapid-qoi`](https://github.com/zakarumych/rapid-qoi)
 - [`qoi-fu`](https://github.com/pfusik/qoi-fu)
     - `qoi-fu_cxx` : implementation transpiled to C++
+- [`qoipp`](https://github.com/mrizaln/qoipp)
 
 ## Usage
 

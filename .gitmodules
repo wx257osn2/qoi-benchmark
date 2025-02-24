@@ -16,3 +16,6 @@
 [submodule "benchmark/.dependencies/nlohmann_json"]
 	path = benchmark/.dependencies/nlohmann_json
 	url = https://github.com/nlohmann/json
+[submodule "qoipp/qoipp"]
+	path = qoipp/qoipp
+	url = https://github.com/mrizaln/qoipp

@@ -1,4 +1,4 @@
-all: libqoi libqoixx libqoi_rust librapid_qoi libqoi_fu_cxx benchmark
+all: libqoi libqoixx libqoi_rust librapid_qoi libqoi_fu_cxx libqoipp benchmark
 
 benchmark: benchmark/bin/benchmark
 
@@ -14,15 +14,18 @@ librapid_qoi: rapid-qoi/target/release/librapid_qoi.a
 
 libqoi_fu_cxx: qoi-fu/libqoi_fu_cxx.a
 
+libqoipp: qoipp/libqoipp.a
+
 clean:
 	cd qoi && make clean && cd ..
 	cd qoixx && make clean && cd ..
 	cd qoi-rust && cargo clean && cd ..
 	cd rapid-qoi && cargo clean && cd ..
 	cd qoi-fu && make clean && cd ..
+	cd qoipp && make clean && cd ..
 	cd benchmark && make clean && cd ..
 
-install_libraries: libqoi libqoixx libqoixx_nosimd libqoi_rust librapid_qoi libqoi_fu_cxx
+install_libraries: libqoi libqoixx libqoixx_nosimd libqoi_rust librapid_qoi libqoi_fu_cxx libqoipp
 	cp qoi/qoi/qoi.h benchmark/include
 	cp qoi/libqoi.a benchmark/lib
 	cp qoixx/libqoixx.a benchmark/lib
@@ -30,8 +33,9 @@ install_libraries: libqoi libqoixx libqoixx_nosimd libqoi_rust librapid_qoi libq
 	cp qoi-rust/target/release/libqoi_rust.a benchmark/lib
 	cp rapid-qoi/target/release/librapid_qoi.a benchmark/lib
 	cp qoi-fu/libqoi_fu_cxx.a benchmark/lib
+	cp qoipp/libqoipp.a benchmark/lib
 
-.PHONY: all benchmark libqoi libqoixx libqoixx_nosimd libqoi_rust librapid_qoi libqoi_fu_cxx install_libraries clean
+.PHONY: all benchmark libqoi libqoixx libqoixx_nosimd libqoi_rust librapid_qoi libqoi_fu_cxx libqoipp install_libraries clean
 
 qoi/libqoi.a: qoi/qoi/qoi.h qoi/qoi.c qoi/Makefile
 	cd qoi && make
@@ -50,6 +54,9 @@ rapid-qoi/target/release/librapid_qoi.a: rapid-qoi/src/lib.rs rapid-qoi/Cargo.to
 
 qoi-fu/libqoi_fu_cxx.a: qoi-fu/qoi-fu/transpiled/QOI.hpp qoi-fu/qoi-fu/transpiled/QOI.cpp qoi-fu/qoi-fu.cpp qoi-fu/Makefile
 	cd qoi-fu && make
+
+qoipp/libqoipp.a: qoipp/qoipp/include/qoipp.hpp qoipp/qoipp/source/qoipp.cpp qoipp/driver.cpp qoipp/Makefile
+	cd qoipp && make
 
 benchmark/bin/benchmark: install_libraries benchmark/src/qoibench.cpp benchmark/Makefile
 	cd benchmark && make
