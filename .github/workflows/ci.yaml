@@ -8,33 +8,27 @@ on:
 
 jobs:
   ci:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
-    - name: install gcc-12
-      shell: bash
-      run: |
-        sudo apt-get install -y gcc-12 g++-12
-        sudo update-alternatives --install /usr/local/bin/gcc gcc /usr/bin/gcc-12 12 --slave /usr/local/bin/g++ g++ /usr/bin/g++-12
     - uses: actions/checkout@v4
       with:
         submodules: recursive
-    - uses: Swatinem/rust-cache@v2
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: wx257osn2/cxx_environment@v2
+      with:
+        url_format: 'https://github.com/wx257osn2/qoi-benchmark/releases/download/{}'
+        version: image-v20250302
     - uses: actions/cache@v4
+      id: cached
       with:
         path: images
         key: key
-    - id: cached
-      uses: andstor/file-existence-action@v3
-      with:
-        files: images
     - name: get benchmark suite
-      if: steps.cached.outputs.files_exists == 'false'
+      if: steps.cached.outputs.cache-hit != 'true'
       shell: bash
       run: curl https://qoiformat.org/benchmark/qoi_benchmark_suite.tar | tar x
     - name: build
       shell: bash
-      run: make -j
+      run: cxx-env-run make -j
     - name: run
       shell: bash
       run: benchmark/bin/qoibench 10 images --threads=0

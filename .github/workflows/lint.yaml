@@ -8,23 +8,23 @@ on:
 
 jobs:
   fmt_lint:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
-    - uses: Swatinem/rust-cache@v2
-    - uses: dtolnay/rust-toolchain@stable
+    - uses: wx257osn2/cxx_environment@v2
       with:
-        components: rustfmt, clippy
+        url_format: 'https://github.com/wx257osn2/qoi-benchmark/releases/download/{}'
+        version: image-v20250302
     - name: run
       shell: bash
       run: |
         pushd qoi-rust
-        cargo fmt -- --check
-        cargo clippy
+        cxx-env-run cargo fmt -- --check
+        cxx-env-run cargo clippy
         popd
         pushd rapid-qoi
-        cargo fmt -- --check
-        cargo clippy
+        cxx-env-run cargo fmt -- --check
+        cxx-env-run cargo clippy
         popd
