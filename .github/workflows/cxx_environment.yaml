@@ -1,0 +1,59 @@
+name: Build and deploy image
+
+on:
+  push:
+    tags: [ "image**" ]
+
+jobs:
+  with_docker:
+    strategy:
+      matrix:
+        image: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.image }}
+    steps:
+    - uses: wx257osn2/setup-apptainer@v1.3.6
+    - uses: actions/checkout@v4
+    - uses: docker/setup-buildx-action@v3
+    - uses: crazy-max/ghaction-github-runtime@v3
+    - name: build
+      shell: bash
+      run: |
+        sudo apt update
+        sudo apt install -y --no-install-recommends proot
+        DOCKER_BUILD_EXTRA_OPTIONS="--cache-to type=gha,mode=max --cache-from type=gha --load" cxx_environment/build.bash
+  standalone:
+    strategy:
+      matrix:
+        include:
+          - image: ubuntu-24.04
+            arch: x86_64
+          - image: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.image }}
+    steps:
+    - uses: wx257osn2/setup-apptainer@v1.3.6
+    - uses: actions/checkout@v4
+    - name: build
+      shell: bash
+      run: cxx_environment/build.bash
+    - uses: actions/upload-artifact@v4
+      with:
+        name: sif-${{ matrix.arch }}
+        path: cxx_environment/cxx-${{ matrix.arch }}.sif
+  deploy:
+    runs-on: ubuntu-24.04
+    needs: standalone
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: sif-x86_64
+    - uses: actions/download-artifact@v4
+      with:
+        name: sif-aarch64
+    - uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          cxx-x86_64.sif
+          cxx-aarch64.sif
