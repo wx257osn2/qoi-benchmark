@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
 RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=bind,src=installer,target=/installer \
-    /installer/ubuntu2404_clang19.bash
+    /installer/ubuntu2404_clang20.bash
 
 RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \
