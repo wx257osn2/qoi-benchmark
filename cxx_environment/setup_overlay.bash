@@ -10,9 +10,10 @@ if [ ! "${SINGULARITY:+true}" ]; then
   fi
 fi
 
-"${here}/setup_overlay.bash"
-
-${SINGULARITY} shell --cwd "${PWD}" \
-  --overlay "${here}/overlay.img" \
-  --bind "${PWD}":"${PWD}" \
-  "${here}/cxx-$(uname -m).sif"
+if [ ! -f "${here}/overlay.img" ]; then
+  ${SINGULARITY} overlay create \
+    --size 2048 \
+    --create-dir /opt/rustup \
+    --create-dir /opt/cargo \
+    "${here}/overlay.img"
+fi
