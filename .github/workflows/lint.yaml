@@ -16,7 +16,7 @@ jobs:
     - uses: wx257osn2/cxx_environment@v2
       with:
         url_format: 'https://github.com/wx257osn2/qoi-benchmark/releases/download/{}'
-        version: image-v20250302
+        version: image-v20250310
     - name: run
       shell: bash
       run: |
