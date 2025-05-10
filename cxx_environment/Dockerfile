@@ -3,6 +3,7 @@ ARG CMAKE_VERSION=3.31.3
 FROM ubuntu:24.04 AS builder
 
 ARG CMAKE_VERSION
+ARG DEBIAN_FRONTEND=noninteractive
 
 RUN --mount=type=cache,target=/var/lib/apt,sharing=locked \
     --mount=type=cache,target=/var/cache/apt,sharing=locked \

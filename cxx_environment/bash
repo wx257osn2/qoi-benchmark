@@ -10,9 +10,12 @@ if [ ! "${SINGULARITY:+true}" ]; then
   fi
 fi
 
-"${here}/setup_overlay.bash"
+bash "${here}/setup_overlay.bash"
 
-${SINGULARITY} shell --cwd "${PWD}" \
+set -euo pipefail
+
+${SINGULARITY} exec --cwd "${PWD}" \
   --overlay "${here}/overlay.img" \
   --bind "${PWD}":"${PWD}" \
-  "${here}/cxx-$(uname -m).sif"
+  "${here}/cxx-$(uname -m).sif" \
+  "/usr/bin/bash"
