@@ -19,7 +19,7 @@ jobs:
     - uses: wx257osn2/cxx_environment@v2
       with:
         url_format: 'https://github.com/wx257osn2/qoi-benchmark/releases/download/{}'
-        version: image-v20250310
+        version: image-v20250510
     - uses: actions/cache/restore@v4
       id: cached
       with:
