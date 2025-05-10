@@ -10,6 +10,10 @@ jobs:
   fmt_lint:
     runs-on: ubuntu-24.04
     steps:
+    - name: stop update man-page
+      run: |
+        echo "set man-db/auto-update false" | sudo debconf-communicate
+        sudo dpkg-reconfigure man-db
     - uses: actions/checkout@v4
       with:
         submodules: recursive

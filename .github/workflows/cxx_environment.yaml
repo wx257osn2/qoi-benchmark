@@ -11,6 +11,10 @@ jobs:
         image: [ubuntu-24.04, ubuntu-24.04-arm]
     runs-on: ${{ matrix.image }}
     steps:
+    - name: stop update man-page
+      run: |
+        echo "set man-db/auto-update false" | sudo debconf-communicate
+        sudo dpkg-reconfigure man-db
     - uses: wx257osn2/setup-apptainer@v1.4.0
     - uses: actions/checkout@v4
     - uses: docker/setup-buildx-action@v3
@@ -31,6 +35,10 @@ jobs:
             arch: aarch64
     runs-on: ${{ matrix.image }}
     steps:
+    - name: stop update man-page
+      run: |
+        echo "set man-db/auto-update false" | sudo debconf-communicate
+        sudo dpkg-reconfigure man-db
     - uses: wx257osn2/setup-apptainer@v1.4.0
     - uses: actions/checkout@v4
     - name: build
