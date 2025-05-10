@@ -14,13 +14,13 @@ Cross-language benchmark for [QOI](https://github.com/phoboslab/qoi) implementat
 
 ## Usage
 
-- Use Docker
+- With Singularity
     - ```console
       host$ curl https://qoiformat.org/benchmark/qoi_benchmark_suite.tar | tar x
-      host$ ./docker/build.bash
-      host$ ./docker/bash
-      docker$ make
-      docker$ benchmark/bin/qoibench 20 images
+      host$ ./cxx_environment/build.bash
+      host$ ./cxx_environment/bash
+      singularity$ make
+      singularity$ benchmark/bin/qoibench 20 images
       ```
 - On Host
     - Prerequisites:
