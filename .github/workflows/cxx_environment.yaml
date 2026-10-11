@@ -8,17 +8,23 @@ jobs:
   with_docker:
     strategy:
       matrix:
-        image: [ubuntu-24.04, ubuntu-24.04-arm]
+        image: [ubuntu-26.04, ubuntu-26.04-arm]
     runs-on: ${{ matrix.image }}
+    env:
+      APPTAINER_TMPDIR: ${{ github.workspace }}/.apptainer-tmp
+      APPTAINER_CACHEDIR: ${{ github.workspace }}/.apptainer-cache
     steps:
     - name: stop update man-page
       run: |
         echo "set man-db/auto-update false" | sudo debconf-communicate
         sudo dpkg-reconfigure man-db
-    - uses: wx257osn2/setup-apptainer@v1.4.0
-    - uses: actions/checkout@v4
-    - uses: docker/setup-buildx-action@v3
-    - uses: crazy-max/ghaction-github-runtime@v3
+    - parallel:
+      - uses: wx257osn2/setup-apptainer@v1.5.4
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: crazy-max/ghaction-github-runtime@v4
+    - run: |
+        mkdir -p ${APPTAINER_TMPDIR} ${APPTAINER_CACHEDIR}
     - name: build
       shell: bash
       run: |
@@ -29,38 +35,45 @@ jobs:
     strategy:
       matrix:
         include:
-          - image: ubuntu-24.04
+          - image: ubuntu-26.04
             arch: x86_64
-          - image: ubuntu-24.04-arm
+          - image: ubuntu-26.04-arm
             arch: aarch64
     runs-on: ${{ matrix.image }}
+    env:
+      APPTAINER_TMPDIR: ${{ github.workspace }}/.apptainer-tmp
+      APPTAINER_CACHEDIR: ${{ github.workspace }}/.apptainer-cache
     steps:
     - name: stop update man-page
       run: |
         echo "set man-db/auto-update false" | sudo debconf-communicate
         sudo dpkg-reconfigure man-db
-    - uses: wx257osn2/setup-apptainer@v1.4.0
-    - uses: actions/checkout@v4
+    - parallel:
+      - uses: wx257osn2/setup-apptainer@v1.5.4
+      - uses: actions/checkout@v7
+    - run: |
+        mkdir -p ${APPTAINER_TMPDIR} ${APPTAINER_CACHEDIR}
     - name: build
       shell: bash
       run: cxx_environment/build.bash
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: sif-${{ matrix.arch }}
         path: cxx_environment/cxx-${{ matrix.arch }}.sif
   deploy:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-slim
     needs: standalone
     permissions:
       contents: write
     steps:
-    - uses: actions/download-artifact@v4
-      with:
-        name: sif-x86_64
-    - uses: actions/download-artifact@v4
-      with:
-        name: sif-aarch64
-    - uses: softprops/action-gh-release@v2
+    - parallel:
+      - uses: actions/download-artifact@v8
+        with:
+          name: sif-x86_64
+      - uses: actions/download-artifact@v8
+        with:
+          name: sif-aarch64
+    - uses: softprops/action-gh-release@v3
       with:
         files: |
           cxx-x86_64.sif

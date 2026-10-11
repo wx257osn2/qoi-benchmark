@@ -8,19 +8,47 @@ on:
 
 jobs:
   fmt_lint:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
     - name: stop update man-page
       run: |
         echo "set man-db/auto-update false" | sudo debconf-communicate
         sudo dpkg-reconfigure man-db
-    - uses: actions/checkout@v4
-      with:
-        submodules: recursive
-    - uses: wx257osn2/cxx_environment@v2
-      with:
-        url_format: 'https://github.com/wx257osn2/qoi-benchmark/releases/download/{}'
-        version: image-v20250510
+    - parallel:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - uses: wx257osn2/cxx_environment@v3
+        with:
+          url_format: 'https://github.com/wx257osn2/qoi-benchmark/releases/download/{}'
+          version: image-v20261012
+    - run: |
+        cat > `which cxx-env-run` << 'EOF'
+        #!/bin/bash
+        
+        here="$(realpath $(dirname ${BASH_SOURCE:-$0}))"
+        
+        if [ ! "${SINGULARITY:+true}" ]; then
+          if [ `which singularity` ]; then
+            SINGULARITY=singularity
+          elif [ `which apptainer` ]; then
+            SINGULARITY=apptainer
+          fi
+        fi
+        
+        set -euo pipefail
+        
+        sudo mkdir -p ${here}/cargo/registry
+        sudo chown $(id -u):$(id -g) ${here}/cargo/registry
+        
+        ${SINGULARITY} run --cwd "${PWD}" \
+          --bind "${PWD}":"${PWD}" \
+          --bind "${here}/cargo/registry":"/opt/cargo/registry" \
+          --bind "${RUNNER_TEMP}":"/tmp" \
+          "${here}/sandbox" \
+          "$@"
+        EOF
+        chmod +x `which cxx-env-run`
     - name: run
       shell: bash
       run: |

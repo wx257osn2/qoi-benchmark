@@ -10,21 +10,23 @@ jobs:
   ci:
     strategy:
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        os: [ubuntu-26.04, ubuntu-26.04-arm]
     runs-on: ${{ matrix.os }}
     steps:
     - name: stop update man-page
       run: |
         echo "set man-db/auto-update false" | sudo debconf-communicate
         sudo dpkg-reconfigure man-db
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         submodules: recursive
-    - uses: wx257osn2/cxx_environment@v2
+    - uses: wx257osn2/cxx_environment@v3
+      id: cxxenv
+      background: true
       with:
         url_format: 'https://github.com/wx257osn2/qoi-benchmark/releases/download/{}'
-        version: image-v20250510
-    - uses: actions/cache/restore@v4
+        version: image-v20261012
+    - uses: actions/cache/restore@v6
       id: cached
       with:
         path: images
@@ -33,14 +35,49 @@ jobs:
       if: steps.cached.outputs.cache-hit != 'true'
       shell: bash
       run: curl https://qoiformat.org/benchmark/qoi_benchmark_suite.tar | tar x
-    - uses: actions/cache/save@v4
-      if: steps.cached.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-24.04'
+    - uses: actions/cache/save@v6
+      if: steps.cached.outputs.cache-hit != 'true' && matrix.os == 'ubuntu-26.04'
       with:
         path: images
         key: ${{ steps.cached.outputs.cache-primary-key }}
+    - wait: [cxxenv]
+    - run: |
+        cat > `which cxx-env-run` << 'EOF'
+        #!/bin/bash
+        
+        here="$(realpath $(dirname ${BASH_SOURCE:-$0}))"
+        
+        if [ ! "${SINGULARITY:+true}" ]; then
+          if [ `which singularity` ]; then
+            SINGULARITY=singularity
+          elif [ `which apptainer` ]; then
+            SINGULARITY=apptainer
+          fi
+        fi
+        
+        set -euo pipefail
+        
+        sudo mkdir -p ${here}/cargo/registry
+        sudo chown $(id -u):$(id -g) ${here}/cargo/registry
+        
+        ${SINGULARITY} run --cwd "${PWD}" \
+          --bind "${PWD}":"${PWD}" \
+          --bind "${here}/cargo/registry":"/opt/cargo/registry" \
+          --bind "${RUNNER_TEMP}":"/tmp" \
+          "${here}/sandbox" \
+          "$@"
+        EOF
+        chmod +x `which cxx-env-run`
     - name: build
       shell: bash
-      run: cxx-env-run make -j
+      run: |
+        pushd rapid-qoi
+        cxx-env-run cargo fetch
+        popd
+        pushd qoi-rust
+        cxx-env-run cargo fetch
+        popd
+        cxx-env-run make -j
     - name: run
       shell: bash
       run: benchmark/bin/qoibench 10 images --threads=0
