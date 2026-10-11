@@ -1,27 +1,29 @@
 Bootstrap: docker
-From: ubuntu:24.04
+From: ubuntu:26.04
 
 %post -c /bin/bash
 
   set -euo pipefail
 
-  CMAKE_VERSION=3.31.3
+  GCC_VERSION=16.2.0
+  CMAKE_VERSION=4.4.3
 
   DEBIAN_FRONTEND=noninteractive
 
-  /installer/ubuntu2404_prelude.bash
-  /installer/ubuntu2404_gcc14.bash
+  /installer/ubuntu$(source /etc/os-release; echo ${VERSION_ID//./})_prelude.bash
+  /installer/ubuntu_gcc.bash ${GCC_VERSION}
   apt-get install -y --no-install-recommends make
-  /installer/ubuntu2404_clang20.bash
-  /installer/ubuntu2404_clang-format18.bash
+  /installer/ubuntu_clang.bash 23 /opt/gcc-${GCC_VERSION}
   /installer/cmake.bash ${CMAKE_VERSION}
   RUSTUP_HOME=/opt/rustup CARGO_HOME=/opt/cargo /installer/rustup.bash
   /installer/ubuntu2404_postlude.bash
+  apt-get clean
+  rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
   CUSTOM_ENV=/.singularity.d/env/99-zz_custom_env.sh
-  cat >${CUSTOM_ENV} << 'EOF'
-#!/bin/bash
+  echo "#!/bin/bash" > ${CUSTOM_ENV}
+  echo 'export PATH=${PATH}:'"/opt/cmake-${CMAKE_VERSION}/bin:/opt/gcc-${GCC_VERSION}/bin" >> ${CUSTOM_ENV}
+  cat >> ${CUSTOM_ENV} << 'EOF'
 export RUSTUP_HOME=/opt/rustup
 export CARGO_HOME=/opt/cargo
-export PATH=${PATH}:/opt/cmake-${CMAKE_VERSION}/bin
 source /opt/cargo/env
