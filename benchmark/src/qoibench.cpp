@@ -277,11 +277,27 @@ static std::vector<std::uint8_t> convert_to_argb_int(const std::uint8_t* pixels,
   return data;
 }
 
+static inline bool equal_pixels_rgb(const ::qoi_desc& desc, const std::uint8_t* lhs, const std::uint8_t* rhs){
+  return std::memcmp(lhs, rhs, desc.width*desc.height*desc.channels) == 0;
+}
+
+static inline bool equal_pixels_argb_int(const ::qoi_desc& desc, const std::uint8_t* lhs, const std::uint8_t* rhs){
+  const std::uint32_t mask = desc.channels == 4 ? 0xffffffffu : 0x00ffffffu;
+  for(auto i : std::views::iota(0u, desc.width*desc.height)){
+    std::uint32_t l, r;
+    std::memcpy(&l, lhs+i*4, 4);
+    std::memcpy(&r, rhs+i*4, 4);
+    if((l ^ r) & mask)
+      return false;
+  }
+  return true;
+}
+
 static inline bool verify_rgb(const char* name, const std::filesystem::path& p, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*), const std::uint8_t* pixels, const qoi_desc& desc, const std::uint8_t* encoded, int encoded_size, bool shelve)try{
   {// qoi.encode -> decoder == pixels
     qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(encoded, encoded_size, &dc, desc.channels)), free};
-    if(pixs == nullptr || !compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
+    if(pixs == nullptr || !compare(desc, dc) || !equal_pixels_rgb(desc, pixels, pixs.get()))
       throw std::runtime_error(std::string{name} + " decoder pixel mismatch for " + p.string());
   }
   int size;
@@ -291,13 +307,13 @@ static inline bool verify_rgb(const char* name, const std::filesystem::path& p, 
   {// encoder -> qoi.decode == pixels
     ::qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(&::free)>{static_cast<std::uint8_t*>(::qoi_decode(enc.get(), size, &dc, desc.channels)), &::free};
-    if(pixs == nullptr || !compare(desc, dc) || std::memcmp(pixels, pixs.get(), dc.width*dc.height*dc.channels) != 0)
+    if(pixs == nullptr || !compare(desc, dc) || !equal_pixels_rgb(dc, pixels, pixs.get()))
       throw std::runtime_error(std::string{name} + " encoder pixel mismatch for " + p.string());
   }
   {// encoder -> decoder == pixels
     ::qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(enc.get(), size, &dc, desc.channels)), free};
-    if(pixs == nullptr || !compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
+    if(pixs == nullptr || !compare(desc, dc) || !equal_pixels_rgb(desc, pixels, pixs.get()))
       throw std::runtime_error(std::string{name} + " roundtrip pixel mismatch for " + p.string());
   }
   return true;
@@ -314,7 +330,7 @@ static inline bool verify_argb_int(const char* name, const std::filesystem::path
   {// qoi.encode -> decoder == pixels
     qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(encoded, encoded_size, &dc, desc.channels)), free};
-    if(pixs == nullptr || !compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
+    if(pixs == nullptr || !compare(desc, dc) || !equal_pixels_argb_int(desc, pixels, pixs.get()))
       throw std::runtime_error(std::string{name} + " decoder pixel mismatch for " + p.string());
   }
   int size;
@@ -324,13 +340,13 @@ static inline bool verify_argb_int(const char* name, const std::filesystem::path
   {// encoder -> qoi.decode == pixels
     ::qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(&::free)>{static_cast<std::uint8_t*>(::qoi_decode(enc.get(), size, &dc, desc.channels)), &::free};
-    if(pixs == nullptr || !compare(desc, dc) || std::memcmp(pixels, convert_to_argb_int(pixs.get(), desc.width * desc.height, desc.channels).data(), dc.width*dc.height*dc.channels) != 0)
+    if(pixs == nullptr || !compare(desc, dc) || !equal_pixels_argb_int(desc, pixels, convert_to_argb_int(pixs.get(), desc.width * desc.height, desc.channels).data()))
       throw std::runtime_error(std::string{name} + " encoder pixel mismatch for " + p.string());
   }
   {// encoder -> decoder == pixels
     ::qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(enc.get(), size, &dc, desc.channels)), free};
-    if(pixs == nullptr || !compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
+    if(pixs == nullptr || !compare(desc, dc) || !equal_pixels_argb_int(desc, pixels, pixs.get()))
       throw std::runtime_error(std::string{name} + " roundtrip pixel mismatch for " + p.string());
   }
   return true;
