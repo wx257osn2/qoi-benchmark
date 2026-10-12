@@ -84,6 +84,15 @@ struct max{
 #define VERIFY_CALL_II_END
 #define VERIFY_CALL(impls) CAT(VERIFY_CALL_I impls, _END)
 
+#define CHALLENGE_CALL_(impl_name, ident, pixel_format) \
+  if(opt.CAT(run_, ident) && !qoi_benchmark::challenge_implementation(impl_name, dataset.name, &::CAT(ident, _encode), &::CAT(ident, _decode), &::CAT(ident, _free), CAT(CHALLENGE_PIXELS_OF_, pixel_format), &qoi_benchmark::CAT(equal_pixels_, pixel_format), input, opt)) \
+    opt.CAT(run_, ident) = false;
+#define CHALLENGE_CALL_I(name, ident, pixel_format)  CHALLENGE_CALL_(name, ident, pixel_format) CHALLENGE_CALL_II
+#define CHALLENGE_CALL_II(name, ident, pixel_format) CHALLENGE_CALL_(name, ident, pixel_format) CHALLENGE_CALL_I
+#define CHALLENGE_CALL_I_END
+#define CHALLENGE_CALL_II_END
+#define CHALLENGE_CALL(impls) CAT(CHALLENGE_CALL_I impls, _END)
+
 #define BENCHMARK_DECODE_CALL_(_0, ident, _1) \
   if(opt.CAT(run_, ident)) \
     BENCHMARK_DECODE(opt, result.ident.decode_time, ::CAT(ident, _decode), ::CAT(ident, _free));

@@ -19,6 +19,7 @@
 
 #include"implementation_macro.hpp"
 #include"implementations.hpp"
+#include"challenge_datasets.hpp"
 
 #include"suppress_optimization.hpp"
 #include"thread_pool.hpp"
@@ -44,6 +45,7 @@ namespace qoi_benchmark{
 struct options{
   bool warmup = true;
   bool verify = true;
+  bool challenge = true;
   bool encode = true;
   bool decode = true;
   bool recurse = true;
@@ -58,6 +60,8 @@ struct options{
       this->warmup = false;
     else if(argv == "--noverify")
       this->verify = false;
+    else if(argv == "--nochallenge")
+      this->challenge = false;
     else if(argv == "--noencode")
       this->encode = false;
     else if(argv == "--nodecode")
@@ -359,6 +363,61 @@ static inline bool verify_argb_int(const char* name, const std::filesystem::path
     throw;
 }
 
+struct challenge_input{
+  ::qoi_desc desc;
+  std::vector<std::uint8_t> pixels;
+  std::vector<std::uint8_t> encoded;
+  int reference_encoded_size;
+};
+
+static inline challenge_input make_challenge_input(const challenge::raw_image& image){
+  int size;
+  const auto encoded = std::unique_ptr<std::uint8_t[], decltype(&::free)>{static_cast<std::uint8_t*>(::qoi_encode(image.pixels.data(), &image.desc, &size)), &::free};
+  return {image.desc, {image.pixels.begin(), image.pixels.end()}, {encoded.get(), encoded.get()+size}, size};
+}
+
+static inline challenge_input make_challenge_input(const challenge::qoi_image& image){
+  ::qoi_desc desc;
+  const auto pixels = std::unique_ptr<std::uint8_t[], decltype(&::free)>{static_cast<std::uint8_t*>(::qoi_decode(image.bytes.data(), static_cast<int>(image.bytes.size()), &desc, 0)), &::free};
+  int size;
+  const auto encoded = std::unique_ptr<std::uint8_t[], decltype(&::free)>{static_cast<std::uint8_t*>(::qoi_encode(pixels.get(), &desc, &size)), &::free};
+  return {desc, {pixels.get(), pixels.get()+desc.width*desc.height*desc.channels}, {image.bytes.begin(), image.bytes.end()}, size};
+}
+
+static inline bool challenge_implementation(const char* name, std::string_view dataset, void* (*encoder)(const void*, const qoi_desc*, int*), void* (*decoder)(const void*, int, qoi_desc*, int), void(*free)(void*), const std::uint8_t* pixels, bool(*equal_pixels)(const ::qoi_desc&, const std::uint8_t*, const std::uint8_t*), const challenge_input& input, const options& opt){
+  const auto fail = [&](std::string_view reason){
+    std::cout << name << " failed challenge " << dataset << " (" << reason << "), excluded from benchmark" << std::endl;
+    return false;
+  };
+  if(opt.decode){
+    ::qoi_desc dc;
+    const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(input.encoded.data(), static_cast<int>(input.encoded.size()), &dc, input.desc.channels)), free};
+    if(pixs == nullptr || !compare(input.desc, dc) || !equal_pixels(input.desc, pixels, pixs.get()))
+      return fail("decoder pixel mismatch");
+  }
+  if(opt.encode){
+    int size;
+    const auto enc = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(encoder(pixels, &input.desc, &size)), free};
+    if(enc == nullptr || size != input.reference_encoded_size)
+      return fail("encoder size mismatch");
+    ::qoi_desc dc;
+    const auto pixs = std::unique_ptr<std::uint8_t[], decltype(&::free)>{static_cast<std::uint8_t*>(::qoi_decode(enc.get(), size, &dc, input.desc.channels)), &::free};
+    if(pixs == nullptr || !compare(input.desc, dc) || !equal_pixels_rgb(input.desc, input.pixels.data(), pixs.get()))
+      return fail("encoder pixel mismatch");
+  }
+  return true;
+}
+
+static inline void run_challenge(options& opt){
+  for(const auto& dataset : challenge::datasets){
+    const auto input = std::visit([](const auto& image){return make_challenge_input(image);}, dataset.image);
+    const auto argb_int_pixels = convert_to_argb_int(input.pixels.data(), input.desc.width * input.desc.height, input.desc.channels);
+#define CHALLENGE_PIXELS_OF_rgb input.pixels.data()
+#define CHALLENGE_PIXELS_OF_argb_int argb_int_pixels.data()
+    CHALLENGE_CALL(IMPLEMENTATIONS)
+  }
+}
+
 template<typename Deleter>
 using unique_ptr_for_benchmark = std::unique_ptr<std::uint8_t[], Deleter>;
 #define BENCHMARK(opt, result, preamble, ...) \
@@ -498,6 +557,7 @@ static inline int help(const char* argv_0, std::ostream& os = std::cout){
         "Options:\n"
         "    --nowarmup ....... don't perform a warmup run\n"
         "    --noverify ....... don't verify qoi roundtrip\n"
+        "    --nochallenge .... don't exclude implementations failing built-in edge case tests\n"
         "    --noencode ....... don't run encoders\n"
         "    --nodecode ....... don't run decoders\n"
         "    --norecurse ...... don't descend into directories\n"
@@ -533,6 +593,9 @@ int main(int argc, char** argv)try{
     return EXIT_FAILURE;
   }
   opt.runs = static_cast<unsigned>(runs);
+
+  if(opt.challenge)
+    qoi_benchmark::run_challenge(opt);
 
   std::optional<qoi_benchmark::thread_pool_type> threads = std::nullopt;
   if(opt.threads != 1)
