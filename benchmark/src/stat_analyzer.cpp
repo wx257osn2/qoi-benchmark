@@ -209,14 +209,16 @@ static int print(const std::vector<entry>& entries, const options& opt){
 #endif
 static int defeated(const std::vector<entry>& entries, const options& opt, const std::string_view implementation){
   std::unordered_map<std::string_view, std::pair<std::size_t, std::size_t>> summary;
+  bool measured = false;
   for(auto&& entry : entries){
     entry::lib_t fastest = entry.qoi;
     std::string_view encode = "qoi", decode = "qoi";
     entry::lib_t you;
     DEFEATED(IMPLEMENTATIONS)
 
-    const bool e = encode == implementation;
-    const bool d = decode == implementation;
+    measured = measured || you.encode_time.count() != 0 || you.decode_time.count() != 0;
+    const bool e = encode == implementation || you.encode_time.count() == 0;
+    const bool d = decode == implementation || you.decode_time.count() == 0;
     if(d && e)
       continue;
     std::cout << "## " << entry.path << " size: " << entry.width << 'x' << entry.height << ", channels: " << +entry.channels << '\n'
@@ -238,6 +240,10 @@ static int defeated(const std::vector<entry>& entries, const options& opt, const
     if(entry.channels == 4)
       std::cout << "    rgba : " << entry.stat.rgba << '(' << 100. * entry.stat.rgba / size << "%)\n";
     std::cout << "    run  : " << entry.stat.run << '(' << 100. * entry.stat.run / size << "%)\n" << std::endl;
+  }
+  if(not measured){
+    std::cout << "Error: " << implementation << " is not measured.\n";
+    return EXIT_FAILURE;
   }
   if(not summary.empty()){
     std::cout << "  Summary: \n";
@@ -301,7 +307,7 @@ int main(int argc, char** argv){
     const auto entries = parse_json(argv[3], opt);
     if(not entries)
       return stat_analyzer::help(argv[0]);
-    stat_analyzer::defeated(*entries, opt, implementation);
+    return stat_analyzer::defeated(*entries, opt, implementation);
   }
   else
     return stat_analyzer::help(argv[0]);
