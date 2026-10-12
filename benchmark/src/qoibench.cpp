@@ -281,7 +281,7 @@ static inline bool verify_rgb(const char* name, const std::filesystem::path& p, 
   {// qoi.encode -> decoder == pixels
     qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(encoded, encoded_size, &dc, desc.channels)), free};
-    if(!compare(desc, dc) || pixs == nullptr || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
+    if(pixs == nullptr || !compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
       throw std::runtime_error(std::string{name} + " decoder pixel mismatch for " + p.string());
   }
   int size;
@@ -291,13 +291,13 @@ static inline bool verify_rgb(const char* name, const std::filesystem::path& p, 
   {// encoder -> qoi.decode == pixels
     ::qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(&::free)>{static_cast<std::uint8_t*>(::qoi_decode(enc.get(), size, &dc, desc.channels)), &::free};
-    if(!compare(desc, dc) || std::memcmp(pixels, pixs.get(), dc.width*dc.height*dc.channels) != 0)
+    if(pixs == nullptr || !compare(desc, dc) || std::memcmp(pixels, pixs.get(), dc.width*dc.height*dc.channels) != 0)
       throw std::runtime_error(std::string{name} + " encoder pixel mismatch for " + p.string());
   }
   {// encoder -> decoder == pixels
     ::qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(enc.get(), size, &dc, desc.channels)), free};
-    if(!compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
+    if(pixs == nullptr || !compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
       throw std::runtime_error(std::string{name} + " roundtrip pixel mismatch for " + p.string());
   }
   return true;
@@ -314,7 +314,7 @@ static inline bool verify_argb_int(const char* name, const std::filesystem::path
   {// qoi.encode -> decoder == pixels
     qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(encoded, encoded_size, &dc, desc.channels)), free};
-    if(!compare(desc, dc) || pixs == nullptr || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
+    if(pixs == nullptr || !compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
       throw std::runtime_error(std::string{name} + " decoder pixel mismatch for " + p.string());
   }
   int size;
@@ -324,14 +324,13 @@ static inline bool verify_argb_int(const char* name, const std::filesystem::path
   {// encoder -> qoi.decode == pixels
     ::qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(&::free)>{static_cast<std::uint8_t*>(::qoi_decode(enc.get(), size, &dc, desc.channels)), &::free};
-    const auto converted = convert_to_argb_int(pixs.get(), desc.width * desc.height, desc.channels);
-    if(!compare(desc, dc) || std::memcmp(pixels, converted.data(), dc.width*dc.height*dc.channels) != 0)
+    if(pixs == nullptr || !compare(desc, dc) || std::memcmp(pixels, convert_to_argb_int(pixs.get(), desc.width * desc.height, desc.channels).data(), dc.width*dc.height*dc.channels) != 0)
       throw std::runtime_error(std::string{name} + " encoder pixel mismatch for " + p.string());
   }
   {// encoder -> decoder == pixels
     ::qoi_desc dc;
     const auto pixs = std::unique_ptr<std::uint8_t[], decltype(free)>{static_cast<std::uint8_t*>(decoder(enc.get(), size, &dc, desc.channels)), free};
-    if(!compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
+    if(pixs == nullptr || !compare(desc, dc) || std::memcmp(pixels, pixs.get(), desc.width*desc.height*desc.channels) != 0)
       throw std::runtime_error(std::string{name} + " roundtrip pixel mismatch for " + p.string());
   }
   return true;
