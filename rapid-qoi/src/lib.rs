@@ -36,11 +36,15 @@ pub unsafe extern "C" fn rapid_qoi_decode(
         _ => 1u8,
     };
     let ptr = libc::malloc(header.decoded_size()) as *mut u8;
+    if ptr.is_null() {
+        return std::ptr::null_mut();
+    }
     let decode_ = header.decode_skip_header(
         &input[QOI_HEADER_SIZE..],
         std::slice::from_raw_parts_mut(ptr, header.decoded_size()),
     );
     if decode_.is_err() {
+        libc::free(ptr as *mut libc::c_void);
         return std::ptr::null_mut();
     }
     ptr as *mut libc::c_void
@@ -82,8 +86,12 @@ pub unsafe extern "C" fn rapid_qoi_encode(
     };
     let size = encoder.encoded_size_limit();
     let ptr = libc::malloc(size) as *mut u8;
+    if ptr.is_null() {
+        return std::ptr::null_mut();
+    }
     let actual_size = encoder.encode(input, std::slice::from_raw_parts_mut(ptr, size));
     if actual_size.is_err() {
+        libc::free(ptr as *mut libc::c_void);
         return std::ptr::null_mut();
     }
     *out_len = actual_size.unwrap() as libc::c_int;

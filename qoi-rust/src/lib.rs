@@ -33,8 +33,12 @@ pub unsafe extern "C" fn qoi_rust_decode(
     (*desc).channels = header.channels.as_u8();
     (*desc).colorspace = header.colorspace.as_u8();
     let ptr = libc::malloc(header.n_bytes()) as *mut u8;
+    if ptr.is_null() {
+        return std::ptr::null_mut();
+    }
     let decode_ = decode_to_buf(std::slice::from_raw_parts_mut(ptr, header.n_bytes()), input);
     if decode_.is_err() {
+        libc::free(ptr as *mut libc::c_void);
         return std::ptr::null_mut();
     }
     ptr as *mut libc::c_void
@@ -67,6 +71,9 @@ pub unsafe extern "C" fn qoi_rust_encode(
     let height = (*desc).height;
     let size = encode_max_len(width, height, (*desc).channels);
     let ptr = libc::malloc(size) as *mut u8;
+    if ptr.is_null() {
+        return std::ptr::null_mut();
+    }
     let actual_size = encode_to_buf(
         std::slice::from_raw_parts_mut(ptr, size),
         input,
@@ -74,6 +81,7 @@ pub unsafe extern "C" fn qoi_rust_encode(
         height,
     );
     if actual_size.is_err() {
+        libc::free(ptr as *mut libc::c_void);
         return std::ptr::null_mut();
     }
     *out_len = actual_size.unwrap() as libc::c_int;
