@@ -194,7 +194,7 @@ struct benchmark_result_t{
       const auto empps = lib.encode_time.count() != 0 ? px / std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(etime).count() : 0.;
       const auto dmpps = lib.decode_time.count() != 0 ? px / std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(dtime).count() : 0.;
       const auto erate = lib.encode_time.count() != 0 ? static_cast<double>(res.qoi.encode_time.count()) / lib.encode_time.count() : std::numeric_limits<double>::infinity();
-      const auto drate = lib.encode_time.count() != 0 ? static_cast<double>(res.qoi.decode_time.count()) / lib.decode_time.count() : std::numeric_limits<double>::infinity();
+      const auto drate = lib.decode_time.count() != 0 ? static_cast<double>(res.qoi.decode_time.count()) / lib.decode_time.count() : std::numeric_limits<double>::infinity();
       os << name << ": " << std::string(max_name_length-name.size(), ' ') << manip{8, 4} << dtime.count() << "    " << manip{8, 4} << etime.count() << "   " << manip{11, 3} << dmpps << "   " << manip{11, 3} << empps << "   " << manip{11, 3} << drate << "   " << manip{11, 3} << erate << '\n';
       return os;
     }

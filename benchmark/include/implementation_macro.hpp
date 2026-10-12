@@ -119,7 +119,7 @@ struct max{
 
 #define PARSE_LIB_(name, ident, _) \
   e.ident = parse_lib(data[name]); \
-  opt.CAT(run_, ident) = e.ident.encode_time.count() != 0 && e.ident.decode_time.count() != 0;
+  opt.CAT(run_, ident) = e.ident.encode_time.count() != 0 || e.ident.decode_time.count() != 0;
 #define PARSE_LIB_I(name, ident, _)  PARSE_LIB_(name, ident, _) PARSE_LIB_II
 #define PARSE_LIB_II(name, ident, _) PARSE_LIB_(name, ident, _) PARSE_LIB_I
 #define PARSE_LIB_I_END
@@ -138,7 +138,7 @@ struct max{
     fastest.encode_time = entry.ident.encode_time; \
     encode = name; \
   } \
-  if(entry.ident.encode_time.count() > 0 and fastest.decode_time > entry.ident.decode_time){ \
+  if(entry.ident.decode_time.count() > 0 and fastest.decode_time > entry.ident.decode_time){ \
     fastest.decode_time = entry.ident.decode_time; \
     decode = name; \
   } \

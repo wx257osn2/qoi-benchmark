@@ -78,7 +78,7 @@ struct entry{
       const auto empps = lib.encode_time.count() != 0 ? px / std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(lib.encode_time).count() : 0.;
       const auto dmpps = lib.decode_time.count() != 0 ? px / std::chrono::duration_cast<std::chrono::duration<double, std::micro>>(lib.decode_time).count() : 0.;
       const auto erate = lib.encode_time.count() != 0 ? e.qoi.encode_time.count() / lib.encode_time.count() : std::numeric_limits<double>::infinity();
-      const auto drate = lib.encode_time.count() != 0 ? e.qoi.decode_time.count() / lib.decode_time.count() : std::numeric_limits<double>::infinity();
+      const auto drate = lib.decode_time.count() != 0 ? e.qoi.decode_time.count() / lib.decode_time.count() : std::numeric_limits<double>::infinity();
       os << name << ": " << std::string(max_name_length-name.size(), ' ') << manip{8, 4} << std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(lib.decode_time).count() << "    " << manip{8, 4} << std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(lib.encode_time).count() << "   " << manip{11, 3} << dmpps << "   " << manip{11, 3} << empps << "   " << manip{11, 3} << drate << "   " << manip{11, 3} << erate << '\n';
       return os;
     }
